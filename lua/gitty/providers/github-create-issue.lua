@@ -12,21 +12,7 @@ function M.create_new_issue()
 
 	-- Now open the side window for body editing
 	local prefix = "new_issue"
-	-- Use the utility function instead of local duplicate
-	github_utils.close_existing_buffer(prefix)
-
-	-- Create right-aligned vertical split
-	vim.cmd("rightbelow vertical split")
-	local win = vim.api.nvim_get_current_win()
-
-	-- Set window width to 40% of screen
-	local width = math.floor(vim.o.columns * 0.4)
-	vim.api.nvim_win_set_width(win, width)
-
-	-- Create and setup buffer
-	local buf = vim.api.nvim_create_buf(false, true)
-	vim.api.nvim_buf_set_name(buf, prefix)
-	vim.bo[buf].filetype = "markdown"
+	local win, buf = github_utils.create_side_buffer(prefix, 0.4, "markdown")
 
 	-- Set initial content with the provided title
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, {
@@ -50,11 +36,6 @@ function M.create_new_issue()
 	})
 
 	vim.bo[buf].modifiable = true
-	vim.api.nvim_win_set_buf(win, buf)
-
-	-- Set window options
-	vim.wo[win].signcolumn = "no"
-	vim.wo[win].wrap = true
 
 	-- Position cursor at the description section (line 5)
 	vim.api.nvim_win_set_cursor(win, { 5, 0 })

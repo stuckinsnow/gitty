@@ -202,17 +202,7 @@ end
 function M.open_in_right_buffer(content, prefix)
 	prefix = prefix or "github_content"
 
-	M.close_existing_buffer(prefix)
-
-	vim.cmd("rightbelow vertical split")
-	local win = vim.api.nvim_get_current_win()
-
-	local width = math.floor(vim.o.columns * 0.4)
-	vim.api.nvim_win_set_width(win, width)
-
-	local buf = vim.api.nvim_create_buf(false, true)
-	vim.api.nvim_buf_set_name(buf, prefix)
-	vim.bo[buf].filetype = "markdown"
+	local win, buf = M.create_side_buffer(prefix, 0.4, "markdown")
 
 	local lines = add_spacing_to_markdown(content)
 	if #lines == 0 then
@@ -221,10 +211,6 @@ function M.open_in_right_buffer(content, prefix)
 
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
 	vim.bo[buf].modifiable = true
-	vim.api.nvim_win_set_buf(win, buf)
-
-	vim.wo[win].signcolumn = "no"
-	vim.wo[win].wrap = true
 
 	vim.api.nvim_buf_set_keymap(buf, "n", "q", "", {
 		noremap = true,
@@ -302,18 +288,18 @@ function M.show_comments_window(issue_number)
 	end
 
 	-- Create vertical split below current window
-	vim.cmd("split")
-	local buf = vim.api.nvim_create_buf(false, true)
-	vim.api.nvim_buf_set_name(buf, string.format("Comments #%s", issue_number))
-	vim.bo[buf].filetype = "markdown"
+	local win, buf = M.create_bottom_buffer(string.format("Comments #%s", issue_number), 0.4, "markdown")
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, content)
 	vim.bo[buf].modifiable = false
-	vim.api.nvim_win_set_buf(0, buf)
 
-	-- Add q keymap to close the buffer
-	vim.api.nvim_buf_set_keymap(buf, "n", "q", "<cmd>q<cr>", {
+	vim.api.nvim_buf_set_keymap(buf, "n", "q", "", {
 		noremap = true,
 		silent = true,
+		callback = function()
+			if vim.api.nvim_win_is_valid(win) then
+				vim.api.nvim_win_close(win, true)
+			end
+		end,
 		desc = "Close comments window",
 	})
 end
@@ -528,14 +514,7 @@ end
 function M.open_in_bottom_buffer(lines, prefix)
 	prefix = prefix or "github_content"
 
-	M.close_existing_buffer(prefix)
-
-	vim.cmd("split")
-	local win = vim.api.nvim_get_current_win()
-
-	local buf = vim.api.nvim_create_buf(false, true)
-	vim.api.nvim_buf_set_name(buf, prefix)
-	vim.bo[buf].filetype = "markdown"
+	local win, buf = M.create_bottom_buffer(prefix, 0.4, "markdown")
 
 	if #lines == 0 then
 		lines = { "No content available" }
@@ -543,10 +522,6 @@ function M.open_in_bottom_buffer(lines, prefix)
 
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
 	vim.bo[buf].modifiable = true
-	vim.api.nvim_win_set_buf(win, buf)
-
-	vim.wo[win].signcolumn = "no"
-	vim.wo[win].wrap = true
 
 	vim.wo[win].winhighlight = "Normal:CommentsBuffer,LineNr:CommentsBufferLine"
 
@@ -559,6 +534,52 @@ function M.open_in_bottom_buffer(lines, prefix)
 			end
 		end,
 	})
+end
+
+-- Helper to create side buffer with common setup
+function M.create_side_buffer(prefix, width_percent, filetype)
+	width_percent = width_percent or 0.4
+	filetype = filetype or "markdown"
+
+	M.close_existing_buffer(prefix)
+
+	vim.cmd("rightbelow vertical split")
+	local win = vim.api.nvim_get_current_win()
+	local width = math.floor(vim.o.columns * width_percent)
+	vim.api.nvim_win_set_width(win, width)
+
+	local buf = vim.api.nvim_create_buf(false, true)
+	vim.api.nvim_buf_set_name(buf, prefix)
+	vim.bo[buf].filetype = filetype
+	vim.api.nvim_win_set_buf(win, buf)
+
+	vim.wo[win].signcolumn = "no"
+	vim.wo[win].wrap = true
+
+	return win, buf
+end
+
+-- Helper to create bottom buffer with common setup (horizontal split)
+function M.create_bottom_buffer(prefix, height_percent, filetype)
+	height_percent = height_percent or 0.4
+	filetype = filetype or "markdown"
+
+	M.close_existing_buffer(prefix)
+
+	vim.cmd("split")
+	local win = vim.api.nvim_get_current_win()
+	local height = math.floor(vim.o.lines * height_percent)
+	vim.api.nvim_win_set_height(win, height)
+
+	local buf = vim.api.nvim_create_buf(false, true)
+	vim.api.nvim_buf_set_name(buf, prefix)
+	vim.bo[buf].filetype = filetype
+	vim.api.nvim_win_set_buf(win, buf)
+
+	vim.wo[win].signcolumn = "no"
+	vim.wo[win].wrap = true
+
+	return win, buf
 end
 
 return M

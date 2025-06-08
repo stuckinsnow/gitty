@@ -5,7 +5,7 @@ local github_utils = require("gitty.utilities.github-utils")
 -- Registers the :FzfGithubIssues command to list and preview GitHub issues.
 function M.fzf_github_issues()
 	vim.api.nvim_create_user_command("FzfGithubIssues", function()
-		local spinner_utils = require("plugins.fzf.spinner-utils")
+		local spinner_utils = require("gitty.utilities.spinner-utils")
 
 		-- Helper to run a shell command asynchronously and collect output
 		local function get_lines_async(cmd, callback)

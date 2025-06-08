@@ -72,17 +72,7 @@ function M.create_pr_window(current_branch, target_branch, title, initial_descri
 
 	-- Open side window for PR description
 	local prefix = "new_pr"
-	github_utils.close_existing_buffer(prefix)
-
-	vim.cmd("rightbelow vertical split")
-	local win = vim.api.nvim_get_current_win()
-
-	local width = math.floor(vim.o.columns * 0.4)
-	vim.api.nvim_win_set_width(win, width)
-
-	local buf = vim.api.nvim_create_buf(false, true)
-	vim.api.nvim_buf_set_name(buf, prefix)
-	vim.bo[buf].filetype = "markdown"
+	local win, buf = github_utils.create_side_buffer(prefix, 0.4, "markdown")
 
 	local description_text = initial_description or "Write your PR description here"
 
@@ -108,10 +98,6 @@ function M.create_pr_window(current_branch, target_branch, title, initial_descri
 	})
 
 	vim.bo[buf].modifiable = true
-	vim.api.nvim_win_set_buf(win, buf)
-
-	vim.wo[win].signcolumn = "no"
-	vim.wo[win].wrap = true
 
 	vim.api.nvim_win_set_cursor(win, { 12, 0 })
 	vim.cmd("startinsert")

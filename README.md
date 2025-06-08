@@ -1,6 +1,10 @@
-# ✨ gitty — Beautiful GitHub & Git UI for Neovim
+# ✨ Gitty — Beautiful GitHub & Git UI for Neovim
 
-**gitty** brings a modern, interactive, and beautiful GitHub and Git workflow to Neovim. It provides fuzzy pickers, previews, and side buffers for PRs, issues, branches, workflows, and more — all with color, async loading, and keyboard-driven UX.
+**Gitty** brings a modern, interactive, and beautiful GitHub and Git workflow to Neovim. It provides fuzzy pickers, previews, and side buffers for PRs, issues, branches, workflows, and more — all with color, async loading, and keyboard-driven UX.
+
+https://github.com/user-attachments/assets/d6e57846-59a2-4038-8ad0-8c97ad6f5274
+
+Note, 75% of this project was coded using AI assistance, and I am new to Lua. This is not representative of my code quality, so please do not judge the quality of my code based on this project.
 
 ---
 
@@ -53,6 +57,8 @@
   end,
 },
 ```
+
+For AI assistance to work, you will need to create a new prompt in codecompanion, you can find that at the bottom of this README.
 
 ---
 
@@ -164,13 +170,81 @@
 You will need to set up the following highlights in your Neovim configuration to ensure gitty looks great:
 
 ```markdown
-**MiniDiffSign**: All diff signs in the buffer.
-**MiniDiffSignChange**: Changed lines line numbers.
-**MiniDiffSignAdd**: Added lines line numbers.
-**MiniDiffSignDelete**: Deleted lines line numbers.
-**MiniDiffOverAdd**: Highlights added lines.
-**MiniDiffOverChange**: Highlights changed lines.
-**MiniDiffOverDelete**: Highlights deleted lines.
-**MiniDiffOverContext**: Highlights context lines in diffs.
-**MiniDiffOverContextBuf**: Highlights context buffer for added lines.
+- MiniDiffSign: All diff signs in the buffer.
+- MiniDiffSignChange: Changed lines line numbers.
+- MiniDiffSignAdd: Added lines line numbers.
+- MiniDiffSignDelete: Deleted lines line numbers.
+- MiniDiffOverAdd: Highlights added lines.
+- MiniDiffOverChange: Highlights changed lines.
+- MiniDiffOverDelete: Highlights deleted lines.
+- MiniDiffOverContext: Highlights context lines in diffs.
+- MiniDiffOverContextBuf: Highlights context buffer for added lines.
+```
+
+---
+
+## 🤖 CODECOMPANION
+
+CodeCompanion is your AI-powered assistant for coding, offering suggestions, explanations, and code generation to help you be more productive in your development workflow.
+
+```
+      ["PR Description"] = {
+        strategy = "inline",
+        description = "Generate a professional PR description from recent commits",
+        opts = {
+          short_name = "pr",
+        },
+        prompts = {
+          {
+            role = "system",
+            content = "You are a senior developer with years of experience. Create professional, concise pull request descriptions that clearly explain what the PR does, and key changes made, list what an experienced developer would mention but do not try impress anyone. The point is to convey information. Format responses as markdown.",
+          },
+          {
+            role = "user",
+            content = function()
+              -- Get current branch
+              local current_branch = vim.fn.system("git rev-parse --abbrev-ref HEAD"):gsub("%s+", "")
+
+              -- Get recent commits with full details
+              local commit_details = vim.fn.system("git log --oneline -n 10 --no-merges"):gsub("\r", "")
+
+              -- Get diff summary
+              local diff_summary = vim.fn.system("git diff --stat HEAD~5..HEAD"):gsub("\r", "")
+
+              -- Get list of changed files
+              local changed_files = vim.fn.system("git diff --name-only HEAD~5..HEAD"):gsub("\r", "")
+
+              return string.format(
+                [[
+Please create a professional PR description based on the following information:
+
+**Current Branch:** %s
+
+**Recent Commits:**
+%s
+
+**Files Changed:**
+%s
+
+**Diff Summary:**
+%s
+
+Please generate a well-structured PR description that includes:
+- A brief summary of what this PR does
+- Key changes made
+- Any notable implementation details
+- Keep it concise but informative
+
+Format the response as markdown.
+]],
+                current_branch,
+                commit_details,
+                changed_files,
+                diff_summary
+              )
+            end,
+          },
+        },
+      },
+
 ```
