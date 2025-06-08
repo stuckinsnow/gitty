@@ -228,44 +228,116 @@ end
 
 -- Keep the rest of the functions from the simplified version
 function M.compare_by_picker()
+	-- Step 1: Select first branch
 	local fzf = require("fzf-lua")
 
-	fzf.git_commits({
-		prompt = "Select commits (TAB=multi, max 2): ",
-		multiselect = true,
-		cmd = "git log --color=always --pretty=format:'%h %s (%an, %ar)' -n 50",
+	fzf.git_branches({
+		prompt = "Select first branch: ",
 		fzf_opts = {
-			["--multi"] = "",
-			["--header"] = ":: Select 1-2 commits :: TAB to select :: ENTER to compare",
+			["--header"] = ":: Select first branch for comparison",
 		},
 		actions = {
 			["default"] = function(selected)
-				if not selected then
+				if not selected or #selected == 0 then
 					return
 				end
 
-				local commits = {}
-				for _, line in ipairs(selected) do
-					local hash = line:match("^(%w+)")
-					if hash then
-						table.insert(commits, hash)
-					end
+				local first_branch = selected[1]:match("([^%s]+)$")
+				if not first_branch then
+					vim.notify("Failed to extract branch name", vim.log.levels.ERROR)
+					return
 				end
 
-				if #commits == 0 then
-					vim.notify("No valid commits selected", vim.log.levels.WARN)
-				elseif #commits == 1 then
-					vim.cmd("DiffviewOpen " .. commits[1])
-					vim.notify("Comparing " .. commits[1]:sub(1, 7) .. " with working directory", vim.log.levels.INFO)
-				elseif #commits == 2 then
-					vim.cmd("DiffviewOpen " .. commits[1] .. ".." .. commits[2])
-					vim.notify(
-						string.format("Comparing %s..%s", commits[1]:sub(1, 7), commits[2]:sub(1, 7)),
-						vim.log.levels.INFO
-					)
-				else
-					vim.notify("Maximum 2 commits supported", vim.log.levels.WARN)
-				end
+				-- Step 2: Select commit from first branch
+				fzf.git_commits({
+					prompt = string.format("Select commit from %s: ", first_branch),
+					cmd = string.format(
+						"git log --color=always --pretty=format:'%%h %%s (%%an, %%ar)' %s -n 50",
+						first_branch
+					),
+					fzf_opts = {
+						["--header"] = string.format(":: Select commit from %s", first_branch),
+					},
+					actions = {
+						["default"] = function(selected_commit1)
+							if not selected_commit1 or #selected_commit1 == 0 then
+								return
+							end
+
+							local commit1 = selected_commit1[1]:match("^(%w+)")
+							if not commit1 then
+								vim.notify("Failed to extract commit hash", vim.log.levels.ERROR)
+								return
+							end
+
+							-- Step 3: Select second branch
+							fzf.git_branches({
+								prompt = string.format(
+									"Select second branch (comparing %s from %s): ",
+									commit1:sub(1, 7),
+									first_branch
+								),
+								fzf_opts = {
+									["--header"] = ":: Select second branch for comparison",
+								},
+								actions = {
+									["default"] = function(selected2)
+										if not selected2 or #selected2 == 0 then
+											return
+										end
+
+										local second_branch = selected2[1]:match("([^%s]+)$")
+										if not second_branch then
+											vim.notify("Failed to extract branch name", vim.log.levels.ERROR)
+											return
+										end
+
+										-- Step 4: Select commit from second branch
+										fzf.git_commits({
+											prompt = string.format("Select commit from %s: ", second_branch),
+											cmd = string.format(
+												"git log --color=always --pretty=format:'%%h %%s (%%an, %%ar)' %s -n 50",
+												second_branch
+											),
+											fzf_opts = {
+												["--header"] = string.format(":: Select commit from %s", second_branch),
+											},
+											actions = {
+												["default"] = function(selected_commit2)
+													if not selected_commit2 or #selected_commit2 == 0 then
+														return
+													end
+
+													local commit2 = selected_commit2[1]:match("^(%w+)")
+													if not commit2 then
+														vim.notify(
+															"Failed to extract commit hash",
+															vim.log.levels.ERROR
+														)
+														return
+													end
+
+													-- Step 5: Compare the commits
+													vim.cmd("DiffviewOpen " .. commit1 .. ".." .. commit2)
+													vim.notify(
+														string.format(
+															"Comparing %s (%s) vs %s (%s)",
+															commit1:sub(1, 7),
+															first_branch,
+															commit2:sub(1, 7),
+															second_branch
+														),
+														vim.log.levels.INFO
+													)
+												end,
+											},
+										})
+									end,
+								},
+							})
+						end,
+					},
+				})
 			end,
 		},
 	})
