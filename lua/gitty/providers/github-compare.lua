@@ -401,96 +401,137 @@ function M.goto_file_at_commit(commit)
 					return
 				end
 
-				-- Create buffers
+				-- Create buffers and setup content
 				local commit_buf = vim.api.nvim_create_buf(false, true)
 				local current_diff_buf = vim.api.nvim_create_buf(false, true)
-
-				-- Set content
 				local commit_lines = vim.split(result.stdout or "", "\n")
 				if commit_lines[#commit_lines] == "" then
 					table.remove(commit_lines)
 				end
 
-				local current_lines = vim.api.nvim_buf_get_lines(current_buf, 0, -1, false)
-
 				vim.api.nvim_buf_set_lines(commit_buf, 0, -1, false, commit_lines)
-				vim.api.nvim_buf_set_lines(current_diff_buf, 0, -1, false, current_lines)
-
-				-- Set filetypes
-				local filename = vim.fn.fnamemodify(file_path, ":t")
+				vim.api.nvim_buf_set_lines(
+					current_diff_buf,
+					0,
+					-1,
+					false,
+					vim.api.nvim_buf_get_lines(current_buf, 0, -1, false)
+				)
 				vim.bo[commit_buf].filetype = vim.bo[current_buf].filetype
 				vim.bo[current_diff_buf].filetype = vim.bo[current_buf].filetype
 
-				-- Store edit window and create layout
+				-- Create layout
 				local edit_win = vim.api.nvim_get_current_win()
-
 				vim.cmd("split")
 				vim.cmd("vsplit")
-
 				local bottom_right_win = vim.api.nvim_get_current_win()
 				local bottom_left_win = vim.fn.win_getid(vim.fn.winnr("#"))
 
-				-- Set buffers and enable diff
 				vim.api.nvim_win_set_buf(bottom_left_win, current_diff_buf)
 				vim.api.nvim_win_set_buf(bottom_right_win, commit_buf)
-
 				vim.wo[bottom_left_win].diff = true
 				vim.wo[bottom_right_win].diff = true
-
-				-- Go back to edit window
 				vim.api.nvim_set_current_win(edit_win)
 
-				-- Update diff when editing
-				local function update_diff()
-					local updated_lines = vim.api.nvim_buf_get_lines(current_buf, 0, -1, false)
-					vim.api.nvim_buf_set_lines(current_diff_buf, 0, -1, false, updated_lines)
-				end
-
-				-- Sync cursors
-				local function sync_cursor()
-					local current_win = vim.api.nvim_get_current_win()
-					local line = vim.api.nvim_win_get_cursor(current_win)[1]
-
-					for _, win in ipairs({ edit_win, bottom_left_win, bottom_right_win }) do
-						if win ~= current_win and vim.api.nvim_win_is_valid(win) then
-							pcall(vim.api.nvim_win_set_cursor, win, { line, 0 })
-						end
-					end
-				end
-
-				-- Setup autocommands
+				-- Setup cleanup state
+				local closed = false
 				local group = vim.api.nvim_create_augroup("CommitDiffView", { clear = true })
 
-				vim.api.nvim_create_autocmd({ "TextChanged", "TextChangedI" }, {
-					group = group,
-					buffer = current_buf,
-					callback = update_diff,
-				})
-
-				vim.api.nvim_create_autocmd("CursorMoved", {
-					group = group,
-					buffer = current_buf,
-					callback = sync_cursor,
-				})
-
-				-- Close function
 				local function close_diff_view()
+					if closed then
+						return
+					end
+					closed = true
+
+					-- Clean up keymaps
+					pcall(vim.keymap.del, "n", "<leader>q", { buffer = current_buf })
+					pcall(vim.keymap.del, "n", "<leader>q", { buffer = commit_buf })
+					pcall(vim.keymap.del, "n", "<leader>q", { buffer = current_diff_buf })
+
+					-- Close windows and delete buffers
 					if vim.api.nvim_win_is_valid(bottom_right_win) then
 						vim.api.nvim_win_close(bottom_right_win, true)
 					end
 					if vim.api.nvim_win_is_valid(bottom_left_win) then
 						vim.api.nvim_win_close(bottom_left_win, true)
 					end
-					vim.api.nvim_del_augroup_by_id(group)
+					if vim.api.nvim_buf_is_valid(commit_buf) then
+						vim.api.nvim_buf_delete(commit_buf, { force = true })
+					end
+					if vim.api.nvim_buf_is_valid(current_diff_buf) then
+						vim.api.nvim_buf_delete(current_diff_buf, { force = true })
+					end
+
+					pcall(vim.api.nvim_del_augroup_by_id, group)
 					vim.api.nvim_set_current_win(edit_win)
 				end
 
-				-- Keymaps
-				vim.keymap.set("n", "q", close_diff_view, { buffer = current_buf, desc = "Close diff view" })
-				vim.keymap.set("n", "q", close_diff_view, { buffer = commit_buf, desc = "Close diff view" })
+				-- Setup autocmds and keymaps
+				vim.api.nvim_create_autocmd({ "TextChanged", "TextChangedI" }, {
+					group = group,
+					buffer = current_buf,
+					callback = function()
+						vim.api.nvim_buf_set_lines(
+							current_diff_buf,
+							0,
+							-1,
+							false,
+							vim.api.nvim_buf_get_lines(current_buf, 0, -1, false)
+						)
+					end,
+				})
+
+				vim.api.nvim_create_autocmd("CursorMoved", {
+					group = group,
+					buffer = current_buf,
+					callback = function()
+						local current_win = vim.api.nvim_get_current_win()
+						local line = vim.api.nvim_win_get_cursor(current_win)[1]
+						for _, win in ipairs({ edit_win, bottom_left_win, bottom_right_win }) do
+							if win ~= current_win and vim.api.nvim_win_is_valid(win) then
+								pcall(vim.api.nvim_win_set_cursor, win, { line, 0 })
+							end
+						end
+					end,
+				})
+
+				vim.api.nvim_create_autocmd("WinClosed", {
+					group = group,
+					callback = function(args)
+						local closed_win = tonumber(args.match)
+						if closed_win == bottom_left_win or closed_win == bottom_right_win then
+							close_diff_view()
+						end
+					end,
+				})
+
+				-- Set keymaps
+				local keymap_opts = { desc = "Close diff view", nowait = true }
+				vim.keymap.set(
+					"n",
+					"<leader>q",
+					close_diff_view,
+					vim.tbl_extend("force", keymap_opts, { buffer = current_buf })
+				)
+				vim.keymap.set(
+					"n",
+					"<leader>q",
+					close_diff_view,
+					vim.tbl_extend("force", keymap_opts, { buffer = commit_buf })
+				)
+				vim.keymap.set(
+					"n",
+					"<leader>q",
+					close_diff_view,
+					vim.tbl_extend("force", keymap_opts, { buffer = current_diff_buf })
+				)
 
 				vim.notify(
-					string.format("3-pane diff: %s vs %s | q=close", filename, commit:sub(1, 7)),
+					string.format(
+						"3-pane diff: %s vs %s | <leader>q=close",
+						vim.fn.fnamemodify(file_path, ":t"),
+						commit:sub(1, 7)
+					),
 					vim.log.levels.INFO
 				)
 			end)

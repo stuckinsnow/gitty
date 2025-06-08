@@ -376,7 +376,6 @@ function M.fzf_github_workflows()
 												height = 0.2,
 											},
 											-- Helper function to open logs in different formats
-
 											actions = {
 												["default"] = function(selected_run)
 													local run_id = selected_run[1]:match("(%d%d%d%d%d%d%d%d%d+)")
@@ -384,7 +383,6 @@ function M.fzf_github_workflows()
 														open_workflow_logs(run_id, false)
 													end
 												end,
-												-- Add ctrl-t action to open terminal with live logs in side buffer
 												["ctrl-v"] = function(selected_run)
 													local run_id = selected_run[1]:match("(%d%d%d%d%d%d%d%d%d+)")
 													if run_id then

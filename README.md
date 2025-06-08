@@ -4,8 +4,6 @@
 
 https://github.com/user-attachments/assets/d6e57846-59a2-4038-8ad0-8c97ad6f5274
 
-Note, 75% of this project was coded using AI assistance, and I am new to Lua. This is not representative of my code quality, so please do not judge the quality of my code based on this project.
-
 ---
 
 ## 🚀 Features
