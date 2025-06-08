@@ -105,6 +105,18 @@ For AI assistance to work, you will need to create a new prompt in codecompanion
 - `gr`: Reject current hunk/selection
 - `gq`: Close mini diff
 
+You can also add these to your configuration:
+
+```
+vim.keymap.set("n", "<leader>g1n", "<cmd>FzfGithubNotifications<CR>", { desc = "GitHub Notifications" })
+vim.keymap.set("n", "<leader>g1p", "<cmd>FzfGithubPrs<CR>", { desc = "GitHub PRs" })
+vim.keymap.set("n", "<leader>g1w", "<cmd>FzfGithubWorkflows<CR>", { desc = "Github Workflows" })
+vim.keymap.set("n", "<leader>g1i", "<cmd>FzfGithubIssues<CR>", { desc = "GitHub Issues" })
+vim.keymap.set("n", "<leader>g1c", "<cmd>FzfCreateIssue<CR>", { desc = "Create GitHub Issue" })
+vim.keymap.set("n", "<leader>g1C", "<cmd>FzfCreatePr<CR>", { desc = "Create GitHub PR" })
+vim.keymap.set("n", "<leader>g1B", "<cmd>FzfGithubBranches<CR>", { desc = "List Branch Information" })
+```
+
 ---
 
 ## 🧑‍💻 Commands
@@ -183,9 +195,7 @@ You will need to set up the following highlights in your Neovim configuration to
 
 ---
 
-## 🤖 CODECOMPANION
-
-CodeCompanion is your AI-powered assistant for coding, offering suggestions, explanations, and code generation to help you be more productive in your development workflow.
+### 🤖 CODECOMPANION
 
 ```
       ["PR Description"] = {
