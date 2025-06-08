@@ -159,14 +159,18 @@
 
 ---
 
-## 💡 Tips
+## ✨ Highlights
 
-- Use `:GittySetup` to reload the plugin after updating.
-- Use `<C-v>` in pickers to open details in a side buffer and see comments/reviews.
-- Use mini.diff keymaps (`ga`, `gr`, `gq`) for inline editing and review.
-- Please ensure you have all dependencies installed.
+You will need to set up the following highlights in your Neovim configuration to ensure gitty looks great:
 
----
-
-Enjoy a beautiful, modern GitHub workflow in Neovim!  
-Questions or suggestions? [Open an issue](https://github.com/stuckinsnow/gitty/issues).
+```markdown
+**MiniDiffSign**: All diff signs in the buffer.
+**MiniDiffSignChange**: Changed lines line numbers.
+**MiniDiffSignAdd**: Added lines line numbers.
+**MiniDiffSignDelete**: Deleted lines line numbers.
+**MiniDiffOverAdd**: Highlights added lines.
+**MiniDiffOverChange**: Highlights changed lines.
+**MiniDiffOverDelete**: Highlights deleted lines.
+**MiniDiffOverContext**: Highlights context lines in diffs.
+**MiniDiffOverContextBuf**: Highlights context buffer for added lines.
+```
