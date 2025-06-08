@@ -1,6 +1,6 @@
-# ✨ gitty.nvim — Beautiful GitHub & Git UI for Neovim
+# ✨ gitty — Beautiful GitHub & Git UI for Neovim
 
-**gitty.nvim** brings a modern, interactive, and beautiful GitHub and Git workflow to Neovim. It provides fuzzy pickers, previews, and side buffers for PRs, issues, branches, workflows, and more — all with color, async loading, and keyboard-driven UX.
+**gitty** brings a modern, interactive, and beautiful GitHub and Git workflow to Neovim. It provides fuzzy pickers, previews, and side buffers for PRs, issues, branches, workflows, and more — all with color, async loading, and keyboard-driven UX.
 
 ---
 
@@ -27,7 +27,7 @@
 ```lua
 {
   dir = "/path/to/gitty",
-  name = "gitty.nvim",
+  name = "gitty",
   dependencies = {
     "nvim-lua/plenary.nvim",
     "ibhagwan/fzf-lua",
@@ -111,7 +111,7 @@
 | `:FzfGithubWorkflows` | List and preview GitHub Workflows & runs |
 | `:FzfCreatePr`        | Create a new Pull Request                |
 | `:FzfCreateIssue`     | Create a new Issue                       |
-| `:GittySetup`         | (Re)initialize gitty.nvim                |
+| `:GittySetup`         | (Re)initialize gitty                     |
 
 ---
 
@@ -169,4 +169,4 @@
 ---
 
 Enjoy a beautiful, modern GitHub workflow in Neovim!  
-Questions or suggestions? [Open an issue](https://github.com/stuckinsnow/gitty.nvim/issues).
+Questions or suggestions? [Open an issue](https://github.com/stuckinsnow/gitty/issues).
