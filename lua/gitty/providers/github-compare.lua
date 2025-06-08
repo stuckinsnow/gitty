@@ -173,6 +173,9 @@ function M.pick_branch_and_commit(commit1)
 	M.validate_commit(commit1, function()
 		fzf.git_branches({
 			prompt = "Select branch for second commit: ",
+			fzf_opts = {
+				["--header"] = ":: Select branch for second commit",
+			},
 			actions = {
 				["default"] = function(selected)
 					if not selected or #selected == 0 then
@@ -188,9 +191,6 @@ function M.pick_branch_and_commit(commit1)
 					M.pick_commit_from_branch(commit1, branch)
 				end,
 			},
-			fzf_opts = {
-				["--header"] = ":: Select branch for second commit",
-			},
 		})
 	end)
 end
@@ -201,6 +201,9 @@ function M.pick_commit_from_branch(commit1, branch)
 	fzf.git_commits({
 		prompt = string.format("Select commit from %s: ", branch),
 		cmd = string.format("git log --color=always --pretty=format:'%%h %%s (%%an, %%ar)' %s -n 50", branch),
+		fzf_opts = {
+			["--header"] = string.format(":: Select commit from %s", branch),
+		},
 		actions = {
 			["default"] = function(selected)
 				if not selected or #selected == 0 then
@@ -219,9 +222,6 @@ function M.pick_commit_from_branch(commit1, branch)
 					vim.log.levels.INFO
 				)
 			end,
-		},
-		fzf_opts = {
-			["--header"] = string.format(":: Select commit from %s", branch),
 		},
 	})
 end
@@ -276,6 +276,9 @@ function M.compare_with_minidiff()
 
 	fzf.git_commits({
 		prompt = "Select commit for inline diff: ",
+		fzf_opts = {
+			["--header"] = ":: ENTER=diff :: CTRL-V=view file at commit",
+		},
 		actions = {
 			["default"] = function(selected)
 				if not selected or #selected == 0 then
@@ -303,9 +306,6 @@ function M.compare_with_minidiff()
 
 				M.goto_file_at_commit(commit)
 			end,
-		},
-		fzf_opts = {
-			["--header"] = ":: ENTER=diff :: CTRL-V=view file at commit",
 		},
 	})
 end
@@ -760,6 +760,9 @@ function M.find_file_history()
 	fzf.git_commits({
 		prompt = string.format("Commits that modified %s: ", vim.fn.fnamemodify(file_path, ":t")),
 		cmd = cmd,
+		fzf_opts = {
+			["--header"] = ":: File history :: ENTER=copy short hash",
+		},
 		actions = {
 			["default"] = function(selected)
 				if not selected or #selected == 0 then
@@ -789,9 +792,6 @@ function M.find_file_history()
 
 				M.goto_file_at_commit(commit)
 			end,
-		},
-		fzf_opts = {
-			["--header"] = ":: File history :: ENTER=copy short hash",
 		},
 	})
 end
