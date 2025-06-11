@@ -108,6 +108,11 @@ function M.compare_by_hash()
 	end)
 end
 
+local function create_colorized_git_log_cmd(base_cmd)
+	return base_cmd
+		.. " | sed -E 's/^(.*) (feat[^[:space:]]*)/\\1 \\x1b[33m\\2\\x1b[0m/I; s/^(.*) (fix[^[:space:]]*)/\\1 \\x1b[32m\\2\\x1b[0m/I; s/^(.*) (chore[^[:space:]]*)/\\1 \\x1b[31m\\2\\x1b[0m/I; s/^(.*) (add[^[:space:]]*)/\\1 \\x1b[35m\\2\\x1b[0m/I'"
+end
+
 function M.compare_hash_with_current()
 	local commit = vim.fn.input("Enter commit hash: ")
 	if not commit or commit:match("^%s*$") then
@@ -200,7 +205,12 @@ function M.pick_commit_from_branch(commit1, branch)
 
 	fzf.git_commits({
 		prompt = string.format("Select commit from %s: ", branch),
-		cmd = string.format("git log --color=always --pretty=format:'%%h %%s (%%an, %%ar)' %s -n 50", branch),
+		cmd = create_colorized_git_log_cmd(
+			string.format(
+				"git log --color=always --pretty=format:'%%C(blue)%%h%%C(reset) %%C(green)%%ad%%C(reset) %%s %%C(red)%%an%%C(reset)' --date=format:'%%d/%%m/%%Y' %s -n 50",
+				branch
+			)
+		),
 		fzf_opts = {
 			["--header"] = string.format(":: Select commit from %s", branch),
 		},
@@ -251,9 +261,11 @@ function M.compare_by_picker()
 				-- Step 2: Select commit from first branch
 				fzf.git_commits({
 					prompt = string.format("Select commit from %s: ", first_branch),
-					cmd = string.format(
-						"git log --color=always --pretty=format:'%%h %%s (%%an, %%ar)' %s -n 50",
-						first_branch
+					cmd = create_colorized_git_log_cmd(
+						string.format(
+							"git log --color=always --pretty=format:'%%C(blue)%%h%%C(reset) %%C(green)%%ad%%C(reset) %%s %%C(red)%%an%%C(reset)' --date=format:'%%d/%%m/%%Y' %s -n 50",
+							first_branch
+						)
 					),
 					fzf_opts = {
 						["--header"] = string.format(":: Select commit from %s", first_branch),
@@ -295,9 +307,11 @@ function M.compare_by_picker()
 										-- Step 4: Select commit from second branch
 										fzf.git_commits({
 											prompt = string.format("Select commit from %s: ", second_branch),
-											cmd = string.format(
-												"git log --color=always --pretty=format:'%%h %%s (%%an, %%ar)' %s -n 50",
-												second_branch
+											cmd = create_colorized_git_log_cmd(
+												string.format(
+													"git log --color=always --pretty=format:'%%C(blue)%%h%%C(reset) %%C(green)%%ad%%C(reset) %%s %%C(red)%%an%%C(reset)' --date=format:'%%d/%%m/%%Y' %s -n 50",
+													second_branch
+												)
 											),
 											fzf_opts = {
 												["--header"] = string.format(":: Select commit from %s", second_branch),
@@ -865,9 +879,11 @@ function M.find_file_history()
 	local relative_path = vim.fn.fnamemodify(file_path, ":~:.")
 
 	-- Use git log to find all commits that modified this file, showing short hash
-	local cmd = string.format(
-		"git log --color=always --no-abbrev-commit --pretty=format:'%%h %%s (%%an, %%ar)' --follow %s",
-		vim.fn.shellescape(relative_path)
+	local cmd = create_colorized_git_log_cmd(
+		string.format(
+			"git log --color=always --no-abbrev-commit --pretty=format:'%%C(blue)%%h%%C(reset) %%C(green)%%ad%%C(reset) %%s %%C(red)%%an%%C(reset)' --date=format:'%%d/%%m/%%Y' --follow %s",
+			vim.fn.shellescape(relative_path)
+		)
 	)
 
 	fzf.git_commits({
