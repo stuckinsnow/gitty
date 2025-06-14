@@ -4,7 +4,7 @@ local github_utils = require("gitty.utilities.github-utils")
 
 function M.fzf_github_branches()
 	vim.api.nvim_create_user_command("FzfGithubBranches", function()
-		local spinner_utils = require("plugins.fzf.spinner-utils")
+		local spinner_utils = require("gitty.utilities.spinner-utils")
 
 		-- Helper to run shell command asynchronously
 		local function get_lines_async(cmd, callback)
