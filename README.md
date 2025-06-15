@@ -103,6 +103,17 @@ For AI assistance to work, you will need to create a new prompt in codecompanion
 - `gr`: Reject current hunk/selection
 - `gq`: Close mini diff
 
+**In comparison pickers:**
+
+- `<CR>`: Open diffview / minidiff comparisons
+- `<C-e>`: Show diff in side buffer
+- `<C-v>`: View file at specific commit (3-pane layout)
+
+**File History picker:**
+
+- `<CR>`: Copy commit hash to clipboard
+- `<C-v>`: View file at that commit
+
 You can also add these to your configuration:
 
 ```
@@ -119,15 +130,16 @@ vim.keymap.set("n", "<leader>g1B", "<cmd>FzfGithubBranches<CR>", { desc = "List 
 
 ## 🧑‍💻 Commands
 
-| Command               | Description                              |
-| --------------------- | ---------------------------------------- |
-| `:FzfGithubPrs`       | List and preview GitHub Pull Requests    |
-| `:FzfGithubIssues`    | List and preview GitHub Issues           |
-| `:FzfGithubBranches`  | List and preview GitHub Branches         |
-| `:FzfGithubWorkflows` | List and preview GitHub Workflows & runs |
-| `:FzfCreatePr`        | Create a new Pull Request                |
-| `:FzfCreateIssue`     | Create a new Issue                       |
-| `:GittySetup`         | (Re)initialize gitty                     |
+| Command                   | Description                              |
+| ------------------------- | ---------------------------------------- |
+| `:FzfGithubPrs`           | List and preview GitHub Pull Requests    |
+| `:FzfGithubNotifications` | List Github Notifications                |
+| `:FzfGithubIssues`        | List and preview GitHub Issues           |
+| `:FzfGithubBranches`      | List and preview GitHub Branches         |
+| `:FzfGithubWorkflows`     | List and preview GitHub Workflows & runs |
+| `:FzfCreatePr`            | Create a new Pull Request                |
+| `:FzfCreateIssue`         | Create a new Issue                       |
+| `:GittySetup`             | (Re)initialize gitty                     |
 
 ---
 

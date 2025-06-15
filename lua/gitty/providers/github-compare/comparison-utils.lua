@@ -167,7 +167,10 @@ function M.compare_by_picker()
 												)
 											),
 											fzf_opts = {
-												["--header"] = string.format(":: Select commit from %s", second_branch),
+												["--header"] = string.format(
+													":: Select commit from %s :: ENTER=diffview :: CTRL-E=show diff",
+													second_branch
+												),
 											},
 											actions = {
 												["default"] = function(selected_commit2)
@@ -197,6 +200,105 @@ function M.compare_by_picker()
 														vim.log.levels.INFO
 													)
 												end,
+
+												["ctrl-e"] = function(selected_commit2)
+													if not selected_commit2 or #selected_commit2 == 0 then
+														return
+													end
+
+													local commit2 = selected_commit2[1]:match("^(%w+)")
+													if not commit2 then
+														vim.notify(
+															"Failed to extract commit hash",
+															vim.log.levels.ERROR
+														)
+														return
+													end
+
+													-- Get the diff and show it in a buffer
+													vim.system(
+														{ "git", "diff", commit1 .. ".." .. commit2 },
+														{ text = true },
+														function(result)
+															vim.schedule(function()
+																if result.code ~= 0 then
+																	vim.notify(
+																		"Failed to get diff",
+																		vim.log.levels.ERROR
+																	)
+																	return
+																end
+
+																local diff_content = result.stdout or ""
+																if diff_content == "" then
+																	vim.notify(
+																		"No differences found between commits",
+																		vim.log.levels.INFO
+																	)
+																	return
+																end
+
+																-- Create buffer for diff
+																local github_utils =
+																	require("gitty.utilities.github-utils")
+																local win, buf = github_utils.create_side_buffer(
+																	"git_diff",
+																	0.6,
+																	"diff"
+																)
+
+																-- Add header with commit info
+																local header_lines = {
+																	"# Git Diff",
+																	"",
+																	string.format(
+																		"**From:** %s (%s)",
+																		commit1:sub(1, 7),
+																		first_branch
+																	),
+																	string.format(
+																		"**To:** %s (%s)",
+																		commit2:sub(1, 7),
+																		second_branch
+																	),
+																	"",
+																	"---",
+																	"",
+																}
+
+																-- Split diff content into lines
+																local diff_lines = vim.split(diff_content, "\n")
+
+																-- Combine header and diff
+																local all_lines = {}
+																vim.list_extend(all_lines, header_lines)
+																vim.list_extend(all_lines, diff_lines)
+
+																vim.api.nvim_buf_set_lines(buf, 0, -1, false, all_lines)
+																vim.bo[buf].modifiable = false
+																vim.bo[buf].filetype = "diff" -- This will give proper diff syntax highlighting
+
+																vim.keymap.set(
+																	"n",
+																	"<leader>q",
+																	function()
+																		vim.api.nvim_win_close(win, true)
+																	end,
+																	{ buffer = buf, nowait = true, desc = "Close diff" }
+																)
+
+																vim.notify(
+																	string.format(
+																		"Showing diff: %s..%s",
+																		commit1:sub(1, 7),
+																		commit2:sub(1, 7)
+																	),
+																	vim.log.levels.INFO
+																)
+															end)
+														end
+													)
+												end,
 											},
 										})
 									end,
@@ -213,10 +315,11 @@ end
 function M.compare_with_minidiff()
 	local fzf = require("fzf-lua")
 
-	fzf.git_commits({
-		prompt = "Select commit for inline diff: ",
+	-- Step 1: Select branch first (like in compare_by_picker)
+	fzf.git_branches({
+		prompt = "Select branch for inline diff: ",
 		fzf_opts = {
-			["--header"] = ":: ENTER=diff :: CTRL-V=view file at commit",
+			["--header"] = ":: Select branch to choose commit from",
 		},
 		actions = {
 			["default"] = function(selected)
@@ -224,26 +327,53 @@ function M.compare_with_minidiff()
 					return
 				end
 
-				local commit = selected[1]:match("^(%w+)")
-				if not commit then
-					vim.notify("Invalid commit", vim.log.levels.ERROR)
+				local branch = selected[1]:match("([^%s]+)$")
+				if not branch then
+					vim.notify("Failed to extract branch name", vim.log.levels.ERROR)
 					return
 				end
 
-				minidiff_utils.setup_minidiff(commit)
-			end,
-			["ctrl-v"] = function(selected)
-				if not selected or #selected == 0 then
-					return
-				end
+				-- Step 2: Select commit from the chosen branch with proper date formatting
+				fzf.git_commits({
+					prompt = string.format("Select commit from %s for inline diff: ", branch),
+					cmd = picker_utils.create_colorized_git_log_cmd(
+						string.format(
+							"git log --color=always --pretty=format:'%%C(blue)%%h%%C(reset) %%C(green)%%ad%%C(reset) %%s %%C(red)%%an%%C(reset)' --date=format:'%%d/%%m/%%Y' %s -n 50",
+							branch
+						)
+					),
+					fzf_opts = {
+						["--header"] = string.format(":: ENTER=diff :: CTRL-V=view file at commit from %s", branch),
+					},
+					actions = {
+						["default"] = function(selected_commit)
+							if not selected_commit or #selected_commit == 0 then
+								return
+							end
 
-				local commit = selected[1]:match("^(%w+)")
-				if not commit then
-					vim.notify("Invalid commit", vim.log.levels.ERROR)
-					return
-				end
+							local commit = selected_commit[1]:match("^(%w+)")
+							if not commit then
+								vim.notify("Invalid commit", vim.log.levels.ERROR)
+								return
+							end
 
-				require("gitty.providers.github-compare.file-view-utils").goto_file_at_commit(commit)
+							minidiff_utils.setup_minidiff(commit)
+						end,
+						["ctrl-v"] = function(selected_commit)
+							if not selected_commit or #selected_commit == 0 then
+								return
+							end
+
+							local commit = selected_commit[1]:match("^(%w+)")
+							if not commit then
+								vim.notify("Invalid commit", vim.log.levels.ERROR)
+								return
+							end
+
+							require("gitty.providers.github-compare.file-view-utils").goto_file_at_commit(commit)
+						end,
+					},
+				})
 			end,
 		},
 	})
@@ -280,6 +410,87 @@ function M.compare_selected_with_minidiff()
 			end,
 		},
 	})
+end
+
+function M.compare_from_current_branch()
+	local fzf = require("fzf-lua")
+
+	-- Get current branch name
+	vim.system({ "git", "branch", "--show-current" }, { text = true }, function(result)
+		vim.schedule(function()
+			if result.code ~= 0 then
+				vim.notify("Failed to get current branch", vim.log.levels.ERROR)
+				return
+			end
+
+			local current_branch = vim.trim(result.stdout or "")
+			if current_branch == "" then
+				vim.notify("Not on a branch", vim.log.levels.ERROR)
+				return
+			end
+
+			-- Step 1: Select first commit from current branch
+			fzf.git_commits({
+				prompt = string.format("Select first commit from %s: ", current_branch),
+				cmd = picker_utils.create_colorized_git_log_cmd(
+					string.format(
+						"git log --color=always --pretty=format:'%%C(blue)%%h%%C(reset) %%C(green)%%ad%%C(reset) %%s %%C(red)%%an%%C(reset)' --date=format:'%%d/%%m/%%Y' %s -n 50",
+						current_branch
+					)
+				),
+				fzf_opts = {
+					["--header"] = string.format(":: Select first commit from %s", current_branch),
+				},
+				actions = {
+					["default"] = function(selected_commit1)
+						if not selected_commit1 or #selected_commit1 == 0 then
+							return
+						end
+
+						local commit1 = selected_commit1[1]:match("^(%w+)")
+						if not commit1 then
+							vim.notify("Failed to extract commit hash", vim.log.levels.ERROR)
+							return
+						end
+
+						-- Step 2: Select second commit from same branch
+						fzf.git_commits({
+							prompt = string.format("Select second commit from %s: ", current_branch),
+							cmd = picker_utils.create_colorized_git_log_cmd(
+								string.format(
+									"git log --color=always --pretty=format:'%%C(blue)%%h%%C(reset) %%C(green)%%ad%%C(reset) %%s %%C(red)%%an%%C(reset)' --date=format:'%%d/%%m/%%Y' %s -n 50",
+									current_branch
+								)
+							),
+							fzf_opts = {
+								["--header"] = string.format(
+									":: Select second commit from %s :: Comparing with %s",
+									current_branch,
+									commit1:sub(1, 7)
+								),
+							},
+							actions = {
+								["default"] = function(selected_commit2)
+									if not selected_commit2 or #selected_commit2 == 0 then
+										return
+									end
+
+									local commit2 = selected_commit2[1]:match("^(%w+)")
+									if not commit2 then
+										vim.notify("Failed to extract commit hash", vim.log.levels.ERROR)
+										return
+									end
+
+									-- Reuse existing validation and comparison logic
+									validation_utils.validate_and_compare_hashes(commit1, commit2)
+								end,
+							},
+						})
+					end,
+				},
+			})
+		end)
+	end)
 end
 
 return M

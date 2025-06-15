@@ -7,6 +7,12 @@ function M.view_file_at_commit_picker()
 
 	fzf.git_commits({
 		prompt = "Select commit to view file: ",
+		cmd = M.create_colorized_git_log_cmd(
+			"git log --color=always --pretty=format:'%C(blue)%h%C(reset) %C(green)%ad%C(reset) %s %C(red)%an%C(reset)' --date=format:'%d/%m/%Y' -n 100"
+		),
+		fzf_opts = {
+			["--header"] = ":: Select commit to view file :: ENTER=view file at commit",
+		},
 		actions = {
 			["default"] = function(selected)
 				if not selected or #selected == 0 then
