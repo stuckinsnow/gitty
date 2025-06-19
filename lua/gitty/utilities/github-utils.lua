@@ -109,7 +109,7 @@ function M.open_in_right_terminal(content, prefix)
 end
 
 function M.open_in_buffer(content, filename)
-	filename = filename or "/dev/shm/preview_temp.mdx"
+	filename = filename or "/dev/shm/preview_temp.md"
 	local file = io.open(filename, "w")
 	if file then
 		file:write(content)
