@@ -440,8 +440,7 @@ function M.compare_from_current_branch()
 				),
 				fzf_opts = {
 					["--header"] = string.format(":: Multi-select two commits from %s (ENTER=diff)", current_branch),
-					["--multi"] = "",
-					["--exact"] = "",
+					["--multi"] = true,
 				},
 				actions = {
 					["default"] = function(selected)
