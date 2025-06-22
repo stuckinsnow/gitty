@@ -429,9 +429,9 @@ function M.compare_from_current_branch()
 				return
 			end
 
-			-- Step 1: Select first commit from current branch
+			-- Single multi-select picker for two commits
 			fzf.git_commits({
-				prompt = string.format("Select first commit from %s: ", current_branch),
+				prompt = string.format("Select two commits from %s: ", current_branch),
 				cmd = picker_utils.create_colorized_git_log_cmd(
 					string.format(
 						"git log --color=always --pretty=format:'%%C(blue)%%h%%C(reset) %%C(green)%%ad%%C(reset) %%s %%C(red)%%an%%C(reset)' --date=format:'%%d/%%m/%%Y' %s -n 50",
@@ -439,53 +439,25 @@ function M.compare_from_current_branch()
 					)
 				),
 				fzf_opts = {
-					["--header"] = string.format(":: Select first commit from %s", current_branch),
+					["--header"] = string.format(":: Multi-select two commits from %s (ENTER=diff)", current_branch),
+					["--multi"] = "",
+					["--exact"] = "",
 				},
 				actions = {
-					["default"] = function(selected_commit1)
-						if not selected_commit1 or #selected_commit1 == 0 then
+					["default"] = function(selected)
+						if not selected or #selected ~= 2 then
+							vim.notify("Please select exactly two commits", vim.log.levels.WARN)
 							return
 						end
 
-						local commit1 = selected_commit1[1]:match("^(%w+)")
-						if not commit1 then
-							vim.notify("Failed to extract commit hash", vim.log.levels.ERROR)
+						local commit1 = selected[1]:match("^(%w+)")
+						local commit2 = selected[2]:match("^(%w+)")
+						if not commit1 or not commit2 then
+							vim.notify("Failed to extract commit hashes", vim.log.levels.ERROR)
 							return
 						end
 
-						-- Step 2: Select second commit from same branch
-						fzf.git_commits({
-							prompt = string.format("Select second commit from %s: ", current_branch),
-							cmd = picker_utils.create_colorized_git_log_cmd(
-								string.format(
-									"git log --color=always --pretty=format:'%%C(blue)%%h%%C(reset) %%C(green)%%ad%%C(reset) %%s %%C(red)%%an%%C(reset)' --date=format:'%%d/%%m/%%Y' %s -n 50",
-									current_branch
-								)
-							),
-							fzf_opts = {
-								["--header"] = string.format(
-									":: Select second commit from %s :: Comparing with %s",
-									current_branch,
-									commit1:sub(1, 7)
-								),
-							},
-							actions = {
-								["default"] = function(selected_commit2)
-									if not selected_commit2 or #selected_commit2 == 0 then
-										return
-									end
-
-									local commit2 = selected_commit2[1]:match("^(%w+)")
-									if not commit2 then
-										vim.notify("Failed to extract commit hash", vim.log.levels.ERROR)
-										return
-									end
-
-									-- Reuse existing validation and comparison logic
-									validation_utils.validate_and_compare_hashes(commit1, commit2)
-								end,
-							},
-						})
+						validation_utils.validate_and_compare_hashes(commit1, commit2)
 					end,
 				},
 			})
