@@ -59,6 +59,7 @@ function M.fzf_github_workflows()
 					height = 0.2,
 				},
 				actions = {
+					["ctrl-y"] = false,
 					["default"] = function(selected)
 						local selected_display = selected[1]
 						for _, workflow in ipairs(workflow_items) do
@@ -377,6 +378,7 @@ function M.fzf_github_workflows()
 											},
 											-- Helper function to open logs in different formats
 											actions = {
+												["ctrl-y"] = false,
 												["default"] = function(selected_run)
 													local run_id = selected_run[1]:match("(%d%d%d%d%d%d%d%d%d+)")
 													if run_id then
