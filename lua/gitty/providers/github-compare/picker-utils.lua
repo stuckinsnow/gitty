@@ -14,6 +14,7 @@ function M.view_file_at_commit_picker()
 			["--header"] = ":: Select commit to view file :: ENTER=view file at commit",
 		},
 		actions = {
+			["ctrl-y"] = false,
 			["default"] = function(selected)
 				if not selected or #selected == 0 then
 					return
@@ -41,6 +42,7 @@ function M.pick_branch_and_commit(commit1)
 				["--header"] = ":: Select branch for second commit",
 			},
 			actions = {
+				["ctrl-y"] = false,
 				["default"] = function(selected)
 					if not selected or #selected == 0 then
 						return
@@ -74,6 +76,7 @@ function M.pick_commit_from_branch(commit1, branch)
 			["--header"] = string.format(":: Select commit from %s", branch),
 		},
 		actions = {
+			["ctrl-y"] = false,
 			["default"] = function(selected)
 				if not selected or #selected == 0 then
 					return

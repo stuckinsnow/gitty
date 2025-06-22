@@ -174,6 +174,7 @@ function M.fzf_github_issues()
 							return "No preview available"
 						end,
 						actions = {
+							["ctrl-y"] = false,
 							["default"] = function(selected)
 								local item = github_utils.find_item_by_display(selected[1], items)
 								if item and item.url and item.url:match("^https?://") then

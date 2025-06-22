@@ -187,6 +187,7 @@ function M.find_file_history()
 			["--header"] = ":: File history :: ENTER=copy short hash",
 		},
 		actions = {
+			["ctrl-y"] = false,
 			["default"] = function(selected)
 				if not selected or #selected == 0 then
 					return
