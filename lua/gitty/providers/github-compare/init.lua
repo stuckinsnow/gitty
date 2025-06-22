@@ -8,8 +8,8 @@ local file_view_utils = require("gitty.providers.github-compare.file-view-utils"
 
 function M.git_compare_commits()
 	vim.ui.select({
-		"Select from list - Current branch",
-		"Select from list",
+		"List - Current branch",
+		"List - Select branch",
 		"Enter hashes directly",
 		"Compare hash with current file",
 		"Mini Diff (inline)",
@@ -22,7 +22,7 @@ function M.git_compare_commits()
 			return
 		end
 
-		if choice == "Select from list - Current branch" then
+		if choice == "List - Current branch" then
 			M.compare_from_current_branch()
 		elseif choice == "Enter hashes directly" then
 			M.compare_by_hash()
