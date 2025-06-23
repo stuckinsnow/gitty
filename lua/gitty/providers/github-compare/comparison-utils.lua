@@ -156,11 +156,11 @@ function M.compare_by_picker()
 
 					local commit_list = {}
 					for _, c in pairs(all) do
-						local color = "\27[36m" -- Cyan for B0
+						local color = "\27[35m"
 						if c.label == "B1" then
-							color = "\27[35m" -- Magenta for B1
+							color = "\27[36m"
 						elseif c.label == "B2" then
-							color = "\27[33m" -- Yellow for B2
+							color = "\27[91m"
 						end
 						table.insert(commit_list, {
 							ts = c.ts,
@@ -176,7 +176,7 @@ function M.compare_by_picker()
 					end
 
 					local prompt = string.format(
-						"Select from \27[31m[%s]\27[0m, \27[32m[%s]\27[0m, \27[34m[both]\27[0m: ",
+						"Select from \27[36m[%s]\27[0m, \27[91m[%s]\27[0m, \27[35m[both]\27[0m: ",
 						branch1,
 						branch2
 					)
