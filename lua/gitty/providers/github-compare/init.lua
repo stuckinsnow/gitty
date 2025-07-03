@@ -5,6 +5,7 @@ local validation_utils = require("gitty.providers.github-compare.validation-util
 local picker_utils = require("gitty.providers.github-compare.picker-utils")
 local minidiff_utils = require("gitty.providers.github-compare.minidiff-utils")
 local file_view_utils = require("gitty.providers.github-compare.file-view-utils")
+local github_compare_ai = require("gitty.providers.github-compare.github-compare-ai")
 
 function M.git_compare_commits()
 	vim.ui.select({
@@ -15,6 +16,7 @@ function M.git_compare_commits()
 		"Mini Diff (inline)",
 		"View file at commit - Split",
 		"Find when file changed",
+		"Diff Analyse - AI",
 	}, {
 		prompt = "How would you like to compare?",
 	}, function(choice)
@@ -34,6 +36,8 @@ function M.git_compare_commits()
 			M.view_file_at_commit_picker()
 		elseif choice == "Find when file changed" then
 			M.find_file_history()
+		elseif choice == "Diff Analyse - AI" then
+			github_compare_ai.fzf_github_analyse_ai()
 		else
 			M.compare_by_picker()
 		end
