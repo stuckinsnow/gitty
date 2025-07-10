@@ -33,8 +33,9 @@ function M.copy_blame_commit_hash_for_current_line()
 	-- Parse the blame output to get the commit hash
 	local hash = result:match("^(%w+)")
 	if hash then
-		vim.fn.setreg("+", hash)
-		vim.notify("Blame commit hash for line " .. line .. ": " .. hash, vim.log.levels.INFO)
+		local short_hash = hash:sub(1, 7)
+		vim.fn.setreg("+", short_hash)
+		vim.notify("Blame commit hash for line " .. line .. ": " .. short_hash, vim.log.levels.INFO)
 	else
 		vim.notify("Failed to extract commit hash from blame output", vim.log.levels.ERROR)
 	end
