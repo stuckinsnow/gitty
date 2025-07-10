@@ -8,10 +8,15 @@ function M.fzf_github_analyse_ai()
 		fzf_args = "--multi",
 		cmd = "git log --color=always --pretty=format:'%C(blue)%h%C(reset) %C(green)%ad%C(reset) %s %C(red)%an%C(reset)' --date=format:'%d/%m/%Y' -n 50",
 		fzf_opts = {
-			["--header"] = ":: Select 1-2 commits :: ENTER=analyze with AI :: TAB=multi-select",
+			["--header"] = ":: Select 1-2 commits :: ENTER=analyze with AI :: TAB=multi-select :: CTRL-Y=copy hash",
 		},
 		actions = {
-			["ctrl-y"] = false,
+			["ctrl-y"] = function(selected)
+				if not selected or #selected == 0 then
+					return
+				end
+				require("gitty.providers.github-compare.picker-utils").copy_commit_hash(selected)
+			end,
 			["default"] = function(selected)
 				if not selected or #selected == 0 then
 					return
@@ -38,8 +43,9 @@ function M.fzf_github_analyse_ai()
 				if #commits == 1 then
 					-- Get current HEAD hash to compare with selected commit
 					local handle = io.popen("git rev-parse HEAD")
-					local current_hash = handle:read("*a"):gsub("%s+", "")
-					handle:close()
+					local current_hash_result = handle and handle:read("*a") or ""
+					if handle then handle:close() end
+					local current_hash = current_hash_result:gsub("%s+", "")
 
 					vim.g.codecompanion_input = commits[1] .. " " .. current_hash
 					vim.cmd("CodeCompanion /compare_two")

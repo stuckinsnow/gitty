@@ -2,6 +2,20 @@ local M = {}
 
 local validation_utils = require("gitty.providers.github-compare.validation-utils")
 
+function M.copy_commit_hash(selected)
+    if not selected or #selected == 0 then
+        vim.notify("No commit selected to copy", vim.log.levels.WARN)
+        return
+    end
+    local hash = selected[1]:match("^(%w+)")
+    if not hash then
+        vim.notify("Failed to extract commit hash", vim.log.levels.ERROR)
+        return
+    end
+    vim.fn.setreg("+", hash)
+    vim.notify("Copied commit hash: " .. hash, vim.log.levels.INFO)
+end
+
 function M.view_file_at_commit_picker()
 	local fzf = require("fzf-lua")
 

@@ -223,10 +223,15 @@ function M.compare_with_minidiff()
 	fzf.git_branches({
 		prompt = "Select branch for inline diff: ",
 		fzf_opts = {
-			["--header"] = ":: Select branch to choose commit from",
+			["--header"] = ":: Select branch to choose commit from :: CTRL-Y=copy hash",
 		},
 		actions = {
-			["ctrl-y"] = false,
+			["ctrl-y"] = function(selected)
+				if not selected or #selected == 0 then
+					return
+				end
+				require("gitty.providers.github-compare.picker-utils").copy_commit_hash(selected)
+			end,
 			["ctrl-a"] = false,
 			["ctrl-x"] = false,
 			["default"] = function(selected)
@@ -250,10 +255,18 @@ function M.compare_with_minidiff()
 						)
 					),
 					fzf_opts = {
-						["--header"] = string.format(":: ENTER=diff :: CTRL-V=view file at commit from %s", branch),
+						["--header"] = string.format(
+							":: ENTER=diff :: CTRL-V=view file at commit from %s :: CTRL-Y=copy hash",
+							branch
+						),
 					},
 					actions = {
-						["ctrl-y"] = false,
+						["ctrl-y"] = function(selected_commit)
+							if not selected_commit or #selected_commit == 0 then
+								return
+							end
+							require("gitty.providers.github-compare.picker-utils").copy_commit_hash(selected_commit)
+						end,
 						["ctrl-a"] = false,
 						["ctrl-x"] = false,
 						["default"] = function(selected_commit)
@@ -303,7 +316,12 @@ function M.compare_selected_with_minidiff()
 	fzf.git_commits({
 		prompt = "Select commit for selected text diff: ",
 		actions = {
-			["ctrl-y"] = false,
+			["ctrl-y"] = function(selected)
+				if not selected or #selected == 0 then
+					return
+				end
+				require("gitty.providers.github-compare.picker-utils").copy_commit_hash(selected)
+			end,
 			["ctrl-a"] = false,
 			["ctrl-x"] = false,
 			["default"] = function(selected)
@@ -335,7 +353,7 @@ function M.compare_from_current_branch()
 		fzf_args = "--multi",
 		fzf_opts = {
 			["--header"] = string.format(
-				":: Multi-select two commits from %s (ENTER=diff, CTRL-E=show diff)",
+				":: Multi-select two commits from %s (ENTER=diff, CTRL-E=show diff) :: CTRL-Y=copy hash",
 				current_branch
 			),
 		},
@@ -344,7 +362,12 @@ function M.compare_from_current_branch()
 			current_branch
 		),
 		actions = {
-			["ctrl-y"] = false,
+			["ctrl-y"] = function(selected)
+				if not selected or #selected == 0 then
+					return
+				end
+				require("gitty.providers.github-compare.picker-utils").copy_commit_hash(selected)
+			end,
 			["ctrl-a"] = false,
 			["ctrl-x"] = false,
 			["default"] = function(selected)

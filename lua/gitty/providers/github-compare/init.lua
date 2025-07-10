@@ -5,6 +5,7 @@ local validation_utils = require("gitty.providers.github-compare.validation-util
 local picker_utils = require("gitty.providers.github-compare.picker-utils")
 local minidiff_utils = require("gitty.providers.github-compare.minidiff-utils")
 local file_view_utils = require("gitty.providers.github-compare.file-view-utils")
+local blame_utils = require("gitty.providers.github-compare.blame-utils")
 local github_compare_ai = require("gitty.providers.github-compare.github-compare-ai")
 
 function M.git_compare_commits()
@@ -16,6 +17,7 @@ function M.git_compare_commits()
 		"Mini Diff (inline)",
 		"View file at commit - Split",
 		"Find when file changed",
+		"Copy blame commit hash",
 		"Diff Analyse - AI",
 	}, {
 		prompt = "How would you like to compare?",
@@ -36,6 +38,8 @@ function M.git_compare_commits()
 			M.view_file_at_commit_picker()
 		elseif choice == "Find when file changed" then
 			M.find_file_history()
+		elseif choice == "Copy blame commit hash" then
+			M.copy_blame_commit_hash()
 		elseif choice == "Diff Analyse - AI" then
 			github_compare_ai.fzf_github_analyse_ai()
 		else
@@ -67,6 +71,7 @@ M.reset_minidiff = minidiff_utils.reset_minidiff
 M.goto_file_at_commit = file_view_utils.goto_file_at_commit
 M.find_file_history = file_view_utils.find_file_history
 M.show_commit_diff = file_view_utils.show_commit_diff
+M.copy_blame_commit_hash = blame_utils.copy_blame_commit_hash_for_current_line
 
 function M.setup()
 	vim.keymap.set("n", "<leader>g2", M.git_compare_commits, { desc = "Git Compare" })
