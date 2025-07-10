@@ -16,7 +16,8 @@ function M.copy_blame_commit_hash_for_current_line()
 
 	local line = vim.api.nvim_win_get_cursor(0)[1]
 	local relative_path = vim.fn.fnamemodify(file, ":~:.")
-	local cmd = string.format("git blame -L %d,%d --porcelain %s", line, line, vim.fn.shellescape(relative_path))
+	local cmd =
+		string.format("git blame -L %d,%d --porcelain --abbrev=7 %s", line, line, vim.fn.shellescape(relative_path))
 
 	local handle = io.popen(cmd)
 	local result = handle and handle:read("*a") or ""
