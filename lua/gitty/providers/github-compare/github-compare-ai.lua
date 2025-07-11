@@ -41,16 +41,11 @@ function M.fzf_github_analyse_ai()
 				end
 
 				if #commits == 1 then
-					-- Get current HEAD hash to compare with selected commit
-					local handle = io.popen("git rev-parse HEAD")
-					local current_hash_result = handle and handle:read("*a") or ""
-					if handle then handle:close() end
-					local current_hash = current_hash_result:gsub("%s+", "")
-
-					vim.g.codecompanion_input = commits[1] .. " " .. current_hash
+					-- Compare selected commit with working tree (staged + unstaged changes)
+					vim.g.codecompanion_input = commits[1]
 					vim.cmd("CodeCompanion /compare_two")
 					vim.notify(
-						"Comparing " .. commits[1] .. " with current HEAD (" .. current_hash:sub(1, 7) .. ")",
+						"Comparing " .. commits[1] .. " with working tree (staged + unstaged changes)",
 						vim.log.levels.INFO
 					)
 				else
