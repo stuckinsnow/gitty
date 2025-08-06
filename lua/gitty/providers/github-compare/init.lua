@@ -18,6 +18,7 @@ function M.git_compare_commits()
 		"View file at commit - Split",
 		"Find when file changed",
 		"Copy blame commit hash",
+		"Open files from last commit",
 		"Diff Analyse - AI",
 	}, {
 		prompt = "How would you like to compare?",
@@ -40,6 +41,8 @@ function M.git_compare_commits()
 			M.find_file_history()
 		elseif choice == "Copy blame commit hash" then
 			M.copy_blame_commit_hash()
+		elseif choice == "Open files from last commit" then
+			M.fzf_last_commit_files()
 		elseif choice == "Diff Analyse - AI" then
 			github_compare_ai.fzf_github_analyse_ai()
 		else
@@ -63,6 +66,7 @@ M.view_file_at_commit_picker = picker_utils.view_file_at_commit_picker
 M.pick_branch_and_commit = picker_utils.pick_branch_and_commit
 M.pick_commit_from_branch = picker_utils.pick_commit_from_branch
 M.create_colorized_git_log_cmd = picker_utils.create_colorized_git_log_cmd
+M.fzf_last_commit_files = picker_utils.fzf_last_commit_files
 
 M.setup_minidiff = minidiff_utils.setup_minidiff
 M.setup_minidiff_for_selection = minidiff_utils.setup_minidiff_for_selection

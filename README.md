@@ -185,6 +185,56 @@ vim.keymap.set("n", "<leader>g1B", "<cmd>FzfGithubBranches<CR>", { desc = "List 
 - Utility functions for opening buffers, rendering markdown, and more.
 - Async helpers for smooth UX.
 
+### 📋 Copy Filenames Utility
+
+Gitty provides a reusable utility for copying filenames to clipboard with smart path shortening. This is useful for adding context to AI prompts or documentation.
+
+**For FZF buffer pickers** (extracts buffer numbers):
+```lua
+require("fzf-lua").buffers({
+  actions = {
+    ["ctrl-y"] = {
+      fn = function(selection)
+        require("gitty.utilities.file-utils").copy_buffer_filenames_to_clipboard(selection)
+      end,
+    },
+  },
+})
+```
+
+**For regular file pickers** (direct file paths):
+```lua
+require("fzf-lua").files({
+  actions = {
+    ["ctrl-y"] = {
+      fn = function(selection)
+        require("gitty.utilities.file-utils").copy_filenames_to_clipboard(selection)
+      end,
+    },
+  },
+})
+```
+
+**Customization options**:
+```lua
+-- Custom header, prefix, and exclude current buffer
+require("gitty.utilities.file-utils").copy_filenames_to_clipboard(selection, {
+  header = "My Files: ",
+  prefix = "* ",
+  include_current = false
+})
+```
+
+**Output format**:
+```
+Context: 
+- providers/github-compare/picker-utils.lua
+- utilities/file-utils.lua
+- init.lua
+```
+
+Path shortening shows the last 3 directory levels for better readability while maintaining context.
+
 ---
 
 ## ✨ Highlights
