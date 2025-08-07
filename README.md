@@ -190,6 +190,7 @@ vim.keymap.set("n", "<leader>g1B", "<cmd>FzfGithubBranches<CR>", { desc = "List 
 Gitty provides a reusable utility for copying filenames to clipboard with smart path shortening. This is useful for adding context to AI prompts or documentation.
 
 **For FZF buffer pickers** (extracts buffer numbers):
+
 ```lua
 require("fzf-lua").buffers({
   actions = {
@@ -203,6 +204,7 @@ require("fzf-lua").buffers({
 ```
 
 **For regular file pickers** (direct file paths):
+
 ```lua
 require("fzf-lua").files({
   actions = {
@@ -216,18 +218,20 @@ require("fzf-lua").files({
 ```
 
 **Customization options**:
+
 ```lua
 -- Custom header, prefix, and exclude current buffer
 require("gitty.utilities.file-utils").copy_filenames_to_clipboard(selection, {
-  header = "My Files: ",
+  header = "Context: ",
   prefix = "* ",
   include_current = false
 })
 ```
 
 **Output format**:
+
 ```
-Context: 
+Context:
 - providers/github-compare/picker-utils.lua
 - utilities/file-utils.lua
 - init.lua
