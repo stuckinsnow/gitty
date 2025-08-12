@@ -121,7 +121,7 @@ end
 function M.fzf_last_commit_files()
 	local fzf = require("fzf-lua")
 	local current_branch = vim.fn.system("git branch --show-current"):gsub("%s+", "")
-	
+
 	if current_branch == "" then
 		vim.notify("Failed to get current branch or not on a branch", vim.log.levels.ERROR)
 		return
@@ -137,7 +137,10 @@ function M.fzf_last_commit_files()
 			)
 		),
 		fzf_opts = {
-			["--header"] = string.format(":: Select commit from %s :: ENTER=view files :: CTRL-Y=copy hash", current_branch),
+			["--header"] = string.format(
+				":: Select commit from %s :: ENTER=view files :: CTRL-Y=copy hash",
+				current_branch
+			),
 		},
 		actions = {
 			["ctrl-y"] = function(selected)
@@ -194,7 +197,7 @@ function M.show_files_from_commit(commit)
 		prompt = "Select files to open (TAB to multi-select): ",
 		fzf_args = "--multi",
 		fzf_opts = {
-			["--header"] = ":: Files from commit (" .. commit_info .. ") :: ENTER=open files :: TAB=multi-select :: CTRL-Y=copy filenames",
+			["--header"] = ":: " .. commit_info .. " :: ENTER=open files :: TAB=multi-select :: CTRL-Y=copy filenames",
 			["--preview"] = string.format("git show %s:{} 2>/dev/null || echo 'File not found at %s'", commit, commit),
 		},
 		actions = {
