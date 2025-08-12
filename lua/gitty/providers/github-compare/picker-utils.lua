@@ -120,11 +120,57 @@ end
 
 function M.fzf_last_commit_files()
 	local fzf = require("fzf-lua")
+	local current_branch = vim.fn.system("git branch --show-current"):gsub("%s+", "")
+	
+	if current_branch == "" then
+		vim.notify("Failed to get current branch or not on a branch", vim.log.levels.ERROR)
+		return
+	end
 
-	-- Get files from the last commit
-	local handle = io.popen("git show --name-only --format= HEAD 2>/dev/null")
+	-- Step 1: Select commit hash first
+	fzf.git_commits({
+		prompt = string.format("Select commit to view files from %s: ", current_branch),
+		cmd = M.create_colorized_git_log_cmd(
+			string.format(
+				"git log --color=always --pretty=format:'%%C(blue)%%h%%C(reset) %%C(green)%%ad%%C(reset) %%s %%C(red)%%an%%C(reset)' --date=format:'%%d/%%m/%%Y' %s -n 50",
+				current_branch
+			)
+		),
+		fzf_opts = {
+			["--header"] = string.format(":: Select commit from %s :: ENTER=view files :: CTRL-Y=copy hash", current_branch),
+		},
+		actions = {
+			["ctrl-y"] = function(selected)
+				if not selected or #selected == 0 then
+					return
+				end
+				M.copy_commit_hash(selected)
+			end,
+			["default"] = function(selected)
+				if not selected or #selected == 0 then
+					return
+				end
+
+				local commit = selected[1]:match("^(%w+)")
+				if not commit then
+					vim.notify("Invalid commit", vim.log.levels.ERROR)
+					return
+				end
+
+				-- Step 2: Show files from selected commit
+				M.show_files_from_commit(commit)
+			end,
+		},
+	})
+end
+
+function M.show_files_from_commit(commit)
+	local fzf = require("fzf-lua")
+
+	-- Get files from the selected commit
+	local handle = io.popen(string.format("git show --name-only --format= %s 2>/dev/null", commit))
 	if not handle then
-		vim.notify("Failed to get files from last commit", vim.log.levels.ERROR)
+		vim.notify("Failed to get files from commit " .. commit, vim.log.levels.ERROR)
 		return
 	end
 
@@ -137,19 +183,19 @@ function M.fzf_last_commit_files()
 	handle:close()
 
 	if #files == 0 then
-		vim.notify("No files found in last commit", vim.log.levels.WARN)
+		vim.notify("No files found in commit " .. commit, vim.log.levels.WARN)
 		return
 	end
 
-	-- Get last commit info for header
-	local commit_info = vim.fn.system("git log -1 --format='%h %s' HEAD"):gsub("\n", "")
+	-- Get commit info for header
+	local commit_info = vim.fn.system(string.format("git log -1 --format='%%h %%s' %s", commit)):gsub("\n", "")
 
 	fzf.fzf_exec(files, {
-		prompt = "Last commit files (TAB to multi-select): ",
+		prompt = "Select files to open (TAB to multi-select): ",
 		fzf_args = "--multi",
 		fzf_opts = {
-			["--header"] = ":: Files from last commit (" .. commit_info .. ") :: ENTER=open files :: TAB=multi-select :: CTRL-Y=copy filenames",
-			["--preview"] = "git show HEAD:{} 2>/dev/null || echo 'File not found at HEAD'",
+			["--header"] = ":: Files from commit (" .. commit_info .. ") :: ENTER=open files :: TAB=multi-select :: CTRL-Y=copy filenames",
+			["--preview"] = string.format("git show %s:{} 2>/dev/null || echo 'File not found at %s'", commit, commit),
 		},
 		actions = {
 			["ctrl-y"] = function(selected)

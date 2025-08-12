@@ -10,16 +10,16 @@ local github_compare_ai = require("gitty.providers.github-compare.github-compare
 
 function M.git_compare_commits()
 	vim.ui.select({
-		"List - Current branch",
-		"List - Select branch",
-		"Enter hashes directly",
+		"Compare commits from current branch",
+		"Compare commits from different branches",
+		"Compare specific commit hashes",
 		"Compare hash with current file",
 		"Mini Diff (inline)",
 		"View file at commit - Split",
 		"Find when file changed",
 		"Copy blame commit hash",
-		"Open files from last commit",
 		"Diff Analyse - AI",
+		"Open files from previous commit",
 	}, {
 		prompt = "How would you like to compare?",
 	}, function(choice)
@@ -27,9 +27,9 @@ function M.git_compare_commits()
 			return
 		end
 
-		if choice == "List - Current branch" then
+		if choice == "Compare commits from current branch" then
 			M.compare_from_current_branch()
-		elseif choice == "Enter hashes directly" then
+		elseif choice == "Compare specific commit hashes" then
 			M.compare_by_hash()
 		elseif choice == "Compare hash with current file" then
 			M.compare_hash_with_current()
@@ -41,10 +41,10 @@ function M.git_compare_commits()
 			M.find_file_history()
 		elseif choice == "Copy blame commit hash" then
 			M.copy_blame_commit_hash()
-		elseif choice == "Open files from last commit" then
-			M.fzf_last_commit_files()
 		elseif choice == "Diff Analyse - AI" then
 			github_compare_ai.fzf_github_analyse_ai()
+		elseif choice == "Open files from previous commit" then
+			M.fzf_last_commit_files()
 		else
 			M.compare_by_picker()
 		end
