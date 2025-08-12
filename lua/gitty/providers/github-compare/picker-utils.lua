@@ -190,14 +190,14 @@ function M.show_files_from_commit(commit)
 		return
 	end
 
-	-- Get commit info for header
-	local commit_info = vim.fn.system(string.format("git log -1 --format='%%h %%s' %s", commit)):gsub("\n", "")
+	-- Get commit hash for header
+	local commit_hash = vim.fn.system(string.format("git log -1 --format='%%h' %s", commit)):gsub("\n", "")
 
 	fzf.fzf_exec(files, {
 		prompt = "Select files to open (TAB to multi-select): ",
 		fzf_args = "--multi",
 		fzf_opts = {
-			["--header"] = ":: " .. commit_info .. " :: ENTER=open files :: TAB=multi-select :: CTRL-Y=copy filenames",
+			["--header"] = ":: " .. commit_hash .. " :: ENTER=open files :: TAB=multi-select :: CTRL-Y=copy filenames",
 			["--preview"] = string.format("git show %s:{} 2>/dev/null || echo 'File not found at %s'", commit, commit),
 		},
 		actions = {
