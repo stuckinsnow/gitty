@@ -38,14 +38,22 @@ function M.goto_file_at_commit(commit)
 					false,
 					vim.api.nvim_buf_get_lines(current_buf, 0, -1, false)
 				)
-				-- Configure tree-sitter/syntax highlighting for commit buffer (right window)
-				if config.options.split_diff_treesitter then
+				-- Configure tree-sitter/syntax highlighting for buffers
+				-- Left window (current version)
+				if config.options.split_diff_treesitter_left then
+					vim.bo[current_diff_buf].filetype = vim.bo[current_buf].filetype
+				else
+					vim.bo[current_diff_buf].filetype = ""
+					vim.bo[current_diff_buf].syntax = "off"
+				end
+
+				-- Right window (commit version)
+				if config.options.split_diff_treesitter_right then
 					vim.bo[commit_buf].filetype = vim.bo[current_buf].filetype
 				else
 					vim.bo[commit_buf].filetype = ""
 					vim.bo[commit_buf].syntax = "off"
 				end
-				vim.bo[current_diff_buf].filetype = vim.bo[current_buf].filetype
 
 				-- Create layout
 				local edit_win = vim.api.nvim_get_current_win()

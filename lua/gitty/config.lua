@@ -5,8 +5,8 @@ local defaults = {
 	spinner_enabled = true,
 	preview_width = 0.6,
 	preview_height = 0.4,
-	-- Enable tree-sitter highlighting in split diff windows
-	split_diff_treesitter = false,
+	split_diff_treesitter_left = true,
+	split_diff_treesitter_right = false,
 }
 
 M.options = {}

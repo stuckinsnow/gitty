@@ -66,10 +66,11 @@ Gitty can be configured with various options:
 
 ```lua
 require("gitty").setup({
-  spinner_enabled = true,          -- Enable loading spinners
-  preview_width = 0.6,             -- Width of preview windows (0.0-1.0)
-  preview_height = 0.4,            -- Height of preview windows (0.0-1.0)
-  split_diff_treesitter = false,   -- Enable syntax highlighting in split diff views
+  spinner_enabled = true,               -- Enable loading spinners
+  preview_width = 0.6,                  -- Width of preview windows (0.0-1.0)
+  preview_height = 0.4,                 -- Height of preview windows (0.0-1.0)
+  split_diff_treesitter_left = true,    -- Enable syntax highlighting in left split diff window (current version)
+  split_diff_treesitter_right = false,  -- Enable syntax highlighting in right split diff window (commit version)
 })
 ```
 
@@ -78,7 +79,8 @@ require("gitty").setup({
 - **`spinner_enabled`** (boolean, default: `true`): Show loading spinners during async operations
 - **`preview_width`** (number, default: `0.6`): Width ratio for preview windows (0.0 to 1.0)
 - **`preview_height`** (number, default: `0.4`): Height ratio for preview windows (0.0 to 1.0)
-- **`split_diff_treesitter`** (boolean, default: `false`): Enable tree-sitter syntax highlighting in the commit buffer of split diff views. When disabled, the commit view shows plain text for better performance and focus on differences.
+- **`split_diff_treesitter_left`** (boolean, default: `true`): Enable tree-sitter syntax highlighting in the left split diff window (current version). When disabled, shows plain text for better performance and focus on differences.
+- **`split_diff_treesitter_right`** (boolean, default: `false`): Enable tree-sitter syntax highlighting in the right split diff window (commit version). When disabled, shows plain text for better performance and focus on differences.
 
 ---
 
