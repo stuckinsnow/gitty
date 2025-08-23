@@ -1,6 +1,7 @@
 local M = {}
 
 local validation_utils = require("gitty.providers.github-compare.validation-utils")
+local config = require("gitty.config")
 
 function M.goto_file_at_commit(commit)
 	local current_buf = vim.api.nvim_get_current_buf()
@@ -37,8 +38,22 @@ function M.goto_file_at_commit(commit)
 					false,
 					vim.api.nvim_buf_get_lines(current_buf, 0, -1, false)
 				)
-				vim.bo[commit_buf].filetype = vim.bo[current_buf].filetype
-				vim.bo[current_diff_buf].filetype = vim.bo[current_buf].filetype
+				-- Configure tree-sitter/syntax highlighting for buffers
+				-- Left window (current version)
+				if config.options.split_diff_treesitter_left then
+					vim.bo[current_diff_buf].filetype = vim.bo[current_buf].filetype
+				else
+					vim.bo[current_diff_buf].filetype = ""
+					vim.bo[current_diff_buf].syntax = "off"
+				end
+
+				-- Right window (commit version)
+				if config.options.split_diff_treesitter_right then
+					vim.bo[commit_buf].filetype = vim.bo[current_buf].filetype
+				else
+					vim.bo[commit_buf].filetype = ""
+					vim.bo[commit_buf].syntax = "off"
+				end
 
 				-- Create layout
 				local edit_win = vim.api.nvim_get_current_win()
@@ -51,6 +66,14 @@ function M.goto_file_at_commit(commit)
 				vim.api.nvim_win_set_buf(bottom_right_win, commit_buf)
 				vim.wo[bottom_left_win].diff = true
 				vim.wo[bottom_right_win].diff = true
+
+				-- Add custom highlighting for better visual distinction
+				vim.wo[bottom_left_win].winhighlight = "Normal:GittySplitLeft"
+				vim.wo[bottom_right_win].winhighlight = "Normal:GittySplitRight"
+				-- Add window titles for clarity
+				vim.wo[bottom_left_win].winbar = "%#GittySplitLeftTitle#Current Version"
+				vim.wo[bottom_right_win].winbar = "%#GittySplitRightTitle#Commit " .. commit:sub(1, 7)
+
 				vim.api.nvim_set_current_win(edit_win)
 
 				-- Setup cleanup state
@@ -148,7 +171,7 @@ function M.goto_file_at_commit(commit)
 
 				vim.notify(
 					string.format(
-						"3-pane diff: %s vs %s | <leader>q=close",
+						"3-pane diff: %s (left) vs %s (right) | <leader>q=close",
 						vim.fn.fnamemodify(file_path, ":t"),
 						commit:sub(1, 7)
 					),
@@ -184,7 +207,7 @@ function M.find_file_history()
 		prompt = string.format("Commits that modified %s: ", vim.fn.fnamemodify(file_path, ":t")),
 		cmd = cmd,
 		fzf_opts = {
-			["--header"] = ":: File history :: ENTER=copy short hash",
+			["--header"] = ":: File history :: ENTER=copy short hash :: CTRL-V=split view",
 		},
 		actions = {
 			["ctrl-y"] = false,

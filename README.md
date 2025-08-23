@@ -60,6 +60,30 @@ For AI assistance to work, you will need to create a new prompt in codecompanion
 
 ---
 
+## ⚙️ Configuration
+
+Gitty can be configured with various options:
+
+```lua
+require("gitty").setup({
+  spinner_enabled = true,               -- Enable loading spinners
+  preview_width = 0.6,                  -- Width of preview windows (0.0-1.0)
+  preview_height = 0.4,                 -- Height of preview windows (0.0-1.0)
+  split_diff_treesitter_left = true,    -- Enable syntax highlighting in left split diff window (current version)
+  split_diff_treesitter_right = false,  -- Enable syntax highlighting in right split diff window (commit version)
+})
+```
+
+### Configuration Options
+
+- **`spinner_enabled`** (boolean, default: `true`): Show loading spinners during async operations
+- **`preview_width`** (number, default: `0.6`): Width ratio for preview windows (0.0 to 1.0)
+- **`preview_height`** (number, default: `0.4`): Height ratio for preview windows (0.0 to 1.0)
+- **`split_diff_treesitter_left`** (boolean, default: `true`): Enable tree-sitter syntax highlighting in the left split diff window (current version). When disabled, shows plain text for better performance and focus on differences.
+- **`split_diff_treesitter_right`** (boolean, default: `false`): Enable tree-sitter syntax highlighting in the right split diff window (commit version). When disabled, shows plain text for better performance and focus on differences.
+
+---
+
 ## ⚡️ Requirements
 
 - [fzf-lua](https://github.com/ibhagwan/fzf-lua)
@@ -255,6 +279,10 @@ You will need to set up the following highlights in your Neovim configuration to
 - MiniDiffOverDelete: Highlights deleted lines.
 - MiniDiffOverContext: Highlights context lines in diffs.
 - MiniDiffOverContextBuf: Highlights context buffer for added lines.
+- GittySplitLeft: Highlights for the left split window.
+- GittySplitRight: Highlights for the right split window.
+- GittySplitLeftTitle: Highlights for the left split title.
+- GittySplitRightTitle: Highlights for the right split title.
 ```
 
 ---
