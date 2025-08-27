@@ -129,7 +129,8 @@ function M.fzf_last_commit_files()
 
 	-- Step 1: Select commit hash first
 	fzf.git_commits({
-		prompt = string.format("Select commit to view files from %s: ", current_branch),
+		prompt = string.format("Select commits to view files from %s: ", current_branch),
+		fzf_args = "--multi",
 		cmd = M.create_colorized_git_log_cmd(
 			string.format(
 				"git log --color=always --pretty=format:'%%C(blue)%%h%%C(reset) %%C(green)%%ad%%C(reset) %%s %%C(red)%%an%%C(reset)' --date=format:'%%d/%%m/%%Y' %s -n 50",
@@ -138,7 +139,7 @@ function M.fzf_last_commit_files()
 		),
 		fzf_opts = {
 			["--header"] = string.format(
-				":: Select commit from %s :: ENTER=view files :: CTRL-Y=copy hash",
+				":: Select commits from %s :: ENTER=view files :: TAB=multi-select :: CTRL-Y=copy hash",
 				current_branch
 			),
 		},
@@ -154,14 +155,176 @@ function M.fzf_last_commit_files()
 					return
 				end
 
-				local commit = selected[1]:match("^(%w+)")
-				if not commit then
-					vim.notify("Invalid commit", vim.log.levels.ERROR)
+				if #selected == 1 then
+					-- Single commit selected
+					local commit = selected[1]:match("^(%w+)")
+					if not commit then
+						vim.notify("Invalid commit", vim.log.levels.ERROR)
+						return
+					end
+					-- Step 2: Show files from selected commit
+					M.show_files_from_commit(commit)
+				else
+					-- Multiple commits selected
+					local commits = {}
+					for _, sel in ipairs(selected) do
+						local commit = sel:match("^(%w+)")
+						if commit then
+							table.insert(commits, commit)
+						end
+					end
+
+					if #commits == 0 then
+						vim.notify("No valid commits found", vim.log.levels.ERROR)
+						return
+					end
+
+					-- Step 2: Show files from multiple commits
+					M.show_files_from_multiple_commits(commits)
+				end
+			end,
+		},
+	})
+end
+
+function M.show_files_from_multiple_commits(commits)
+	local fzf = require("fzf-lua")
+	local all_files = {}
+	local file_commit_map = {}
+
+	-- Collect files from all commits
+	for _, commit in ipairs(commits) do
+		local handle = io.popen(string.format("git show --name-only --format= %s 2>/dev/null", commit))
+		if handle then
+			for line in handle:lines() do
+				if line ~= "" then
+					if not all_files[line] then
+						all_files[line] = true
+						file_commit_map[line] = {}
+					end
+					table.insert(file_commit_map[line], commit:sub(1, 7))
+				end
+			end
+			handle:close()
+		end
+	end
+
+	-- Convert to list and add commit info
+	local files_list = {}
+	for file, _ in pairs(all_files) do
+		local colored_commits = {}
+		for _, commit in ipairs(file_commit_map[file]) do
+			table.insert(colored_commits, string.format("\x1b[35m%s\x1b[0m", commit))
+		end
+		local commit_info = table.concat(colored_commits, ",")
+		table.insert(files_list, string.format("%s [%s]", file, commit_info))
+	end
+
+	if #files_list == 0 then
+		vim.notify("No files found in selected commits", vim.log.levels.WARN)
+		return
+	end
+
+	-- Sort files alphabetically
+	table.sort(files_list)
+
+	local commit_hashes = {}
+	for _, commit in ipairs(commits) do
+		table.insert(commit_hashes, commit:sub(1, 7))
+	end
+	local commits_str = table.concat(commit_hashes, ", ")
+
+	fzf.fzf_exec(files_list, {
+		prompt = "Select files to open (TAB to multi-select): ",
+		fzf_args = "--multi",
+		fzf_opts = {
+			["--header"] = ":: " .. commits_str .. " :: ENTER=open files :: TAB=multi-select :: CTRL-Y=copy filenames",
+			["--preview"] = function(items)
+				if not items or #items == 0 then
+					return ""
+				end
+				local file = items[1]:match("^([^%[]+)")
+				if file then
+					file = vim.trim(file)
+					-- Show preview from the first commit that contains this file
+					for _, commit in ipairs(commits) do
+						local preview_cmd = string.format("git show %s:%s 2>/dev/null", commit, file)
+						local handle = io.popen(preview_cmd)
+						if handle then
+							local content = handle:read("*a")
+							handle:close()
+							if content and content ~= "" then
+								return content
+							end
+						end
+					end
+				end
+				return "File not found in selected commits"
+			end,
+		},
+		actions = {
+			["ctrl-y"] = function(selected)
+				if not selected or #selected == 0 then
+					return
+				end
+				local filenames = {}
+				for _, item in ipairs(selected) do
+					local file = item:match("^([^%[]+)")
+					if file then
+						table.insert(filenames, vim.trim(file))
+					end
+				end
+				file_utils.copy_filenames_to_clipboard(filenames, { include_current = false })
+			end,
+			["default"] = function(selected)
+				if not selected or #selected == 0 then
 					return
 				end
 
-				-- Step 2: Show files from selected commit
-				M.show_files_from_commit(commit)
+				for _, item in ipairs(selected) do
+					local file = item:match("^([^%[]+)")
+					if file then
+						file = vim.trim(file)
+						if vim.fn.filereadable(file) == 1 then
+							vim.cmd("edit " .. vim.fn.fnameescape(file))
+						else
+							vim.notify("File '" .. file .. "' no longer exists in working tree", vim.log.levels.WARN)
+						end
+					end
+				end
+			end,
+			["ctrl-v"] = function(selected)
+				if not selected or #selected == 0 then
+					return
+				end
+				for _, item in ipairs(selected) do
+					local file = item:match("^([^%[]+)")
+					if file then
+						file = vim.trim(file)
+						if vim.fn.filereadable(file) == 1 then
+							vim.cmd("split " .. vim.fn.fnameescape(file))
+						else
+							vim.notify("File '" .. file .. "' no longer exists in working tree", vim.log.levels.WARN)
+						end
+					end
+				end
+			end,
+			["ctrl-s"] = function(selected)
+				if not selected or #selected == 0 then
+					return
+				end
+
+				for _, item in ipairs(selected) do
+					local file = item:match("^([^%[]+)")
+					if file then
+						file = vim.trim(file)
+						if vim.fn.filereadable(file) == 1 then
+							vim.cmd("split " .. vim.fn.fnameescape(file))
+						else
+							vim.notify("File '" .. file .. "' no longer exists in working tree", vim.log.levels.WARN)
+						end
+					end
+				end
 			end,
 		},
 	})

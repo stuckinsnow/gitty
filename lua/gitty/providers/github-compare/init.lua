@@ -19,10 +19,8 @@ function M.git_compare_commits()
 		"Find when file changed",
 		"Copy blame commit hash",
 		"Diff Analyse - AI",
-		"Open files from previous commit",
-	}, {
-		prompt = "How would you like to compare?",
-	}, function(choice)
+		"Open files from previous commits",
+	}, {}, function(choice)
 		if not choice then
 			return
 		end
@@ -43,7 +41,7 @@ function M.git_compare_commits()
 			M.copy_blame_commit_hash()
 		elseif choice == "Diff Analyse - AI" then
 			github_compare_ai.fzf_github_analyse_ai()
-		elseif choice == "Open files from previous commit" then
+		elseif choice == "Open files from previous commits" then
 			M.fzf_last_commit_files()
 		else
 			M.compare_by_picker()
@@ -75,6 +73,7 @@ M.reset_minidiff = minidiff_utils.reset_minidiff
 M.goto_file_at_commit = file_view_utils.goto_file_at_commit
 M.find_file_history = file_view_utils.find_file_history
 M.show_commit_diff = file_view_utils.show_commit_diff
+M.view_files_from_commits = file_view_utils.view_files_from_commits
 M.copy_blame_commit_hash = blame_utils.copy_blame_commit_hash_for_current_line
 
 function M.setup()

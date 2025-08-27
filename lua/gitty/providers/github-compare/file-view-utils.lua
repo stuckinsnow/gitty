@@ -250,4 +250,8 @@ function M.show_commit_diff(commit)
 	end)
 end
 
+function M.view_files_from_commits()
+	local picker_utils = require("gitty.providers.github-compare.picker-utils")
+	picker_utils.fzf_last_commit_files()
+end
 return M
