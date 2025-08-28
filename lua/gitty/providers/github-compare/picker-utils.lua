@@ -248,7 +248,7 @@ function M.show_files_from_multiple_commits(commits)
 					file = vim.trim(file)
 					-- Show preview from the first commit that contains this file
 					for _, commit in ipairs(commits) do
-						local preview_cmd = string.format("git show %s:%s 2>/dev/null", commit, file)
+						local preview_cmd = string.format("git show %s:%s 2>/dev/null | bat --color=always --style=header,grid --line-range=:500 --file-name='%s'", commit, file, file)
 						local handle = io.popen(preview_cmd)
 						if handle then
 							local content = handle:read("*a")
@@ -361,7 +361,7 @@ function M.show_files_from_commit(commit)
 		fzf_args = "--multi",
 		fzf_opts = {
 			["--header"] = ":: " .. commit_hash .. " :: ENTER=open files :: TAB=multi-select :: CTRL-Y=copy filenames",
-			["--preview"] = string.format("git show %s:{} 2>/dev/null || echo 'File not found at %s'", commit, commit),
+			["--preview"] = string.format("git show %s:{} 2>/dev/null | bat --color=always --style=header,grid --line-range=:500 --file-name={} || echo 'File not found at %s'", commit, commit),
 		},
 		actions = {
 			["ctrl-y"] = function(selected)
