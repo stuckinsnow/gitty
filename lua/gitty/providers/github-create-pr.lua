@@ -1,5 +1,6 @@
 local M = {}
 local github_utils = require("gitty.utilities.github-utils")
+local fzf = require("fzf-lua")
 
 function M.create_new_pr()
 	local current_branch = vim.fn.system("git rev-parse --abbrev-ref HEAD"):gsub("%s+", "")
@@ -14,18 +15,21 @@ function M.create_new_pr()
 		end
 	end
 
-	vim.ui.select(branches, {
-		prompt = "Select target branch:",
-		format_item = function(branch)
-			return branch
-		end,
-	}, function(target_branch)
-		if not target_branch or target_branch:match("^%s*$") then
-			vim.notify("PR creation cancelled - no target branch selected", vim.log.levels.INFO)
-			return
-		end
+	fzf.fzf_exec(branches, {
+		prompt = "Select target branch> ",
+		winopts = {
+			width = 0.6,
+			height = 0.4,
+		},
+		actions = {
+			["default"] = function(selected)
+				local target_branch = selected[1]
+				if not target_branch or target_branch:match("^%s*$") then
+					vim.notify("PR creation cancelled - no target branch selected", vim.log.levels.INFO)
+					return
+				end
 
-		target_branch = vim.trim(target_branch)
+				target_branch = vim.trim(target_branch)
 
 		-- Get PR title first
 		local title = vim.fn.input("PR title: ")
@@ -34,32 +38,39 @@ function M.create_new_pr()
 			return
 		end
 
-		-- Ask for description type
-		vim.ui.select({ "AI-generated", "Manual" }, {
-			prompt = "Description type:",
-			format_item = function(item)
-				return item
-			end,
-		}, function(desc_type)
-			if not desc_type then
-				vim.notify("PR creation cancelled", vim.log.levels.INFO)
-				return
-			end
+				-- Ask for description type
+				fzf.fzf_exec({ "AI-generated", "Manual" }, {
+					prompt = "Description type> ",
+					winopts = {
+						width = 0.3,
+						height = 0.2,
+					},
+					actions = {
+						["default"] = function(desc_selected)
+							local desc_type = desc_selected[1]
+							if not desc_type then
+								vim.notify("PR creation cancelled", vim.log.levels.INFO)
+								return
+							end
 
-			-- Always create the PR window first
-			local win = M.create_pr_window(current_branch, target_branch, title)
+							-- Always create the PR window first
+							local win = M.create_pr_window(current_branch, target_branch, title)
 
-			if desc_type == "AI-generated" then
-				-- Position cursor in description area and run CodeCompanion
-				vim.defer_fn(function()
-					vim.api.nvim_win_set_cursor(win, { 13, 0 }) -- Line with "Write your PR description here"
-					vim.cmd("normal! V") -- Select the line
-					vim.notify("Generating AI description...", vim.log.levels.INFO)
-					vim.cmd("CodeCompanion /pr")
-				end, 100)
+							if desc_type == "AI-generated" then
+								-- Position cursor in description area and run CodeCompanion
+								vim.defer_fn(function()
+									vim.api.nvim_win_set_cursor(win, { 13, 0 }) -- Line with "Write your PR description here"
+									vim.cmd("normal! V") -- Select the line
+									vim.notify("Generating AI description...", vim.log.levels.INFO)
+									vim.cmd("CodeCompanion /pr")
+								end, 100)
+							end
+						end
+					}
+				})
 			end
-		end)
-	end)
+		}
+	})
 end
 
 function M.create_pr_window(current_branch, target_branch, title, initial_description)
@@ -103,82 +114,97 @@ function M.create_pr_window(current_branch, target_branch, title, initial_descri
 	vim.cmd("startinsert")
 
 	local function submit_pr()
-		vim.ui.select({ "Web", "CLI" }, {
-			prompt = "Create PR using Web or CLI?",
-			format_item = function(item)
-				return item
-			end,
-		}, function(option)
-			if not option then
-				print("PR submission cancelled")
-				return
-			end
+		fzf.fzf_exec({ "Web", "CLI" }, {
+			prompt = "Create PR using Web or CLI> ",
+			winopts = {
+				width = 0.35,
+				height = 0.2,
+			},
+			actions = {
+				["default"] = function(method_selected)
+					local option = method_selected[1]
+					if not option then
+						print("PR submission cancelled")
+						return
+					end
 
-			vim.ui.select({ "Yes", "No" }, {
-				prompt = "Create this PR?",
-				format_item = function(item)
-					return item
-				end,
-			}, function(choice)
-				if not choice or choice == "No" then
-					print("PR submission cancelled")
-					return
-				end
+					fzf.fzf_exec({ "Yes", "No" }, {
+						prompt = "Create this PR> ",
+						winopts = {
+							width = 0.25,
+							height = 0.15,
+						},
+						actions = {
+							["default"] = function(confirm_selected)
+								local choice = confirm_selected[1]
+								if not choice or choice == "No" then
+									print("PR submission cancelled")
+									return
+								end
 
-				local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
-				local body_lines = {}
-				for i = 12, #lines do
-					table.insert(body_lines, lines[i])
-				end
-				local body = table.concat(body_lines, "\n"):gsub("^%s+", ""):gsub("%s+$", "")
+								local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+								local body_lines = {}
+								for i = 12, #lines do
+									table.insert(body_lines, lines[i])
+								end
+								local body = table.concat(body_lines, "\n"):gsub("^%s+", ""):gsub("%s+$", "")
 
-				vim.api.nvim_win_close(win, true)
-				print("Creating PR...")
+								vim.api.nvim_win_close(win, true)
+								print("Creating PR...")
 
-				local cmd =
-					{ "gh", "pr", "create", "--base", target_branch, "--head", current_branch, "--title", title }
-				if body and body:match("%S") then
-					table.insert(cmd, "--body")
-					table.insert(cmd, body)
-				end
+								local cmd =
+									{ "gh", "pr", "create", "--base", target_branch, "--head", current_branch, "--title", title }
+								if body and body:match("%S") then
+									table.insert(cmd, "--body")
+									table.insert(cmd, body)
+								end
 
-				if option == "Web" then
-					table.insert(cmd, "--web")
-				end
+								if option == "Web" then
+									table.insert(cmd, "--web")
+								end
 
-				vim.system(cmd, { text = true }, function(result)
-					vim.schedule(function()
-						if result.code == 0 then
-							if option == "Web" then
-								print("✓ PR creation initiated in browser")
-							else
-								print("✓ PR created successfully")
-								vim.cmd("FzfGithubPrs")
+								vim.system(cmd, { text = true }, function(result)
+									vim.schedule(function()
+										if result.code == 0 then
+											if option == "Web" then
+												print("✓ PR creation initiated in browser")
+											else
+												print("✓ PR created successfully")
+												vim.cmd("FzfGithubPrs")
+											end
+										else
+											print("✗ Failed to create PR:")
+											print(result.stderr or "Unknown error")
+										end
+									end)
+								end)
 							end
-						else
-							print("✗ Failed to create PR:")
-							print(result.stderr or "Unknown error")
-						end
-					end)
-				end)
-			end)
-		end)
+						}
+					})
+				end
+			}
+		})
 	end
 
 	local function cancel_pr()
-		vim.ui.select({ "Yes", "No" }, {
-			prompt = "Quit without creating PR?",
-			format_item = function(item)
-				return item
-			end,
-		}, function(choice)
-			if not choice or choice == "No" then
-				print("Continuing with PR creation")
-				return
-			end
-			print("PR creation cancelled")
-			vim.api.nvim_win_close(win, true)
-		end)
+		fzf.fzf_exec({ "Yes", "No" }, {
+			prompt = "Quit without creating PR> ",
+			winopts = {
+				width = 0.3,
+				height = 0.15,
+			},
+			actions = {
+				["default"] = function(selected)
+					local choice = selected[1]
+					if not choice or choice == "No" then
+						print("Continuing with PR creation")
+						return
+					end
+					print("PR creation cancelled")
+					vim.api.nvim_win_close(win, true)
+				end
+			}
+		})
 	end
 
 	-- Keybindings

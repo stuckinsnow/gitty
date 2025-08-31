@@ -1,5 +1,6 @@
 local M = {}
 
+local fzf = require("fzf-lua")
 local comparison_utils = require("gitty.providers.github-compare.comparison-utils")
 local validation_utils = require("gitty.providers.github-compare.validation-utils")
 local picker_utils = require("gitty.providers.github-compare.picker-utils")
@@ -9,44 +10,54 @@ local blame_utils = require("gitty.providers.github-compare.blame-utils")
 local github_compare_ai = require("gitty.providers.github-compare.github-compare-ai")
 
 function M.git_compare_commits()
-	vim.ui.select({
-		"Compare commits from current branch",
-		"Compare commits from different branches",
-		"Compare specific commit hashes",
-		"Compare hash with current file",
-		"Mini Diff (inline)",
-		"View file at commit - Split",
-		"Find when file changed",
-		"Copy blame commit hash",
-		"Diff Analyse - AI",
-		"Open files from previous commits",
-	}, {}, function(choice)
-		if not choice then
-			return
-		end
+	fzf.fzf_exec({
+		"1. Compare commits from current branch",
+		"2. Compare commits from different branches",
+		"3. Compare specific commit hashes",
+		"4. Compare hash with current file",
+		"5. Mini Diff (inline)",
+		"6. View file at commit - Split",
+		"7. Find when file changed",
+		"8. Copy blame commit hash",
+		"9. Diff Analyse - AI",
+		"10. Open files from previous commits",
+	}, {
+		prompt = "Git Compare> ",
+		winopts = {
+			width = 0.6,
+			height = 0.4,
+		},
+		actions = {
+			["default"] = function(selected)
+				local choice = selected[1]
+				if not choice then
+					return
+				end
 
-		if choice == "Compare commits from current branch" then
-			M.compare_from_current_branch()
-		elseif choice == "Compare specific commit hashes" then
-			M.compare_by_hash()
-		elseif choice == "Compare hash with current file" then
-			M.compare_hash_with_current()
-		elseif choice == "Mini Diff (inline)" then
-			M.compare_with_minidiff()
-		elseif choice == "View file at commit - Split" then
-			M.view_file_at_commit_picker()
-		elseif choice == "Find when file changed" then
-			M.find_file_history()
-		elseif choice == "Copy blame commit hash" then
-			M.copy_blame_commit_hash()
-		elseif choice == "Diff Analyse - AI" then
-			github_compare_ai.fzf_github_analyse_ai()
-		elseif choice == "Open files from previous commits" then
-			M.fzf_last_commit_files()
-		else
-			M.compare_by_picker()
-		end
-	end)
+				if choice:match("Compare commits from current branch") then
+					M.compare_from_current_branch()
+				elseif choice:match("Compare specific commit hashes") then
+					M.compare_by_hash()
+				elseif choice:match("Compare hash with current file") then
+					M.compare_hash_with_current()
+				elseif choice:match("Mini Diff %(inline%)") then
+					M.compare_with_minidiff()
+				elseif choice:match("View file at commit") then
+					M.view_file_at_commit_picker()
+				elseif choice:match("Find when file changed") then
+					M.find_file_history()
+				elseif choice:match("Copy blame commit hash") then
+					M.copy_blame_commit_hash()
+				elseif choice:match("Diff Analyse") then
+					github_compare_ai.fzf_github_analyse_ai()
+				elseif choice:match("Open files from previous commits") then
+					M.fzf_last_commit_files()
+				elseif choice:match("Compare commits from different branches") then
+					M.compare_by_picker()
+				end
+			end
+		}
+	})
 end
 
 M.compare_by_hash = comparison_utils.compare_by_hash
