@@ -21,10 +21,7 @@ function M.create_short_path(full_path)
 end
 
 -- Copies filenames to clipboard with smart path shortening
--- selection: array of file paths
--- include_current: whether to include current buffer (default: true)
--- prefix: prefix for each line (default: "- ")
--- header: header text (default: "Context: ")
+-- For files with display formatting, extracts just the filename
 function M.copy_filenames_to_clipboard(selection, options)
 	options = options or {}
 	local include_current = options.include_current ~= false -- default true
@@ -54,11 +51,26 @@ function M.copy_filenames_to_clipboard(selection, options)
 	if selection then
 		for _, file_path in ipairs(selection) do
 			if file_path and file_path ~= "" then
-				local short_path = M.create_short_path(file_path)
-				local entry = prefix .. short_path
-				-- Avoid duplicates
-				if not vim.tbl_contains(filenames, entry) then
-					table.insert(filenames, entry)
+				-- Simple approach: extract filename with dots (like .json, .lua)
+				-- This should match actual filenames regardless of git status/icons
+				local filename = file_path:match("([%w%-_]+%.[%w]+)")
+				
+				-- If no extension found, look for the last word that's a valid filename
+				if not filename then
+					filename = file_path:match("([%w%-_.]+)%s*$")
+				end
+				
+				-- Clean up any remaining whitespace
+				if filename then
+					filename = filename:gsub("^%s+", ""):gsub("%s+$", "")
+					
+					if filename ~= "" then
+						local entry = prefix .. filename
+						-- Avoid duplicates
+						if not vim.tbl_contains(filenames, entry) then
+							table.insert(filenames, entry)
+						end
+					end
 				end
 			end
 		end
@@ -96,6 +108,7 @@ function M.copy_buffer_filenames_to_clipboard(selection, options)
 
 	M.copy_filenames_to_clipboard(file_paths, options)
 end
+
 
 return M
 
