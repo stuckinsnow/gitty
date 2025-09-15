@@ -54,7 +54,7 @@ function M.git_compare_commits()
 					github_compare_ai.fzf_github_analyse_ai()
 				elseif choice:match("Cherry%-pick file from different branch") then
 					M.cherry_pick_file_from_branch()
-				elseif choice:match("Open files from commit in new tab") then
+				elseif choice:match("11%. Open files from commit in new tab") then
 					picker_utils.open_files_from_branch_commit_in_new_tab()
 				elseif choice:match("Open files from previous commits") then
 					M.fzf_last_commit_files()
