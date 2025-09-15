@@ -2,6 +2,32 @@ local M = {}
 
 local validation_utils = require("gitty.providers.github-compare.validation-utils")
 local file_utils = require("gitty.utilities.file-utils")
+local config = require("gitty.config")
+
+function M.create_commit_preview_command()
+	local show_files = config.options.show_commit_files_in_preview
+	local enhanced_style = config.options.enhanced_commit_preview
+
+	if not show_files then
+		-- Original behavior: just show git commit details
+		if enhanced_style then
+			return "HASH=$(echo {} | awk '{print $1}' | sed 's/[^a-f0-9]//g') && git show $HASH 2>/dev/null | delta --width $((FZF_PREVIEW_COLUMNS-2)) --line-numbers"
+		else
+			return "HASH=$(echo {} | awk '{print $1}' | sed 's/[^a-f0-9]//g') && git show --color=always $HASH 2>/dev/null"
+		end
+	else
+		-- Enhanced behavior: show files + diff
+		local base_cmd =
+			"HASH=$(echo {} | awk '{print $1}' | sed 's/[^a-f0-9]//g') && echo -e '\\033[1;36mFiles changed in this commit:\\033[0m' && echo '' && git show --name-only --format= $HASH 2>/dev/null | head -10 && echo '' && echo -e '\\033[1;33m--- Git diff ---\\033[0m'"
+
+		if enhanced_style then
+			return base_cmd
+				.. " && git show $HASH 2>/dev/null | delta --width $((FZF_PREVIEW_COLUMNS-2)) --line-numbers"
+		else
+			return base_cmd .. " && git show --color=always $HASH 2>/dev/null | head -50"
+		end
+	end
+end
 
 function M.copy_commit_hash(selected)
 	if not selected or #selected == 0 then
@@ -27,6 +53,7 @@ function M.view_file_at_commit_picker()
 		),
 		fzf_opts = {
 			["--header"] = ":: Select commit to view file :: ENTER=view file at commit",
+			["--preview"] = M.create_commit_preview_command(),
 		},
 		actions = {
 			["ctrl-y"] = false,
@@ -89,6 +116,7 @@ function M.pick_commit_from_branch(commit1, branch)
 		),
 		fzf_opts = {
 			["--header"] = string.format(":: Select commit from %s", branch),
+			["--preview"] = M.create_commit_preview_command(),
 		},
 		actions = {
 			["ctrl-y"] = false,
@@ -142,6 +170,7 @@ function M.fzf_last_commit_files()
 				":: Select commits from %s :: ENTER=view files :: TAB=multi-select :: CTRL-Y=copy hash",
 				current_branch
 			),
+			["--preview"] = M.create_commit_preview_command(),
 		},
 		actions = {
 			["ctrl-y"] = function(selected)
@@ -248,7 +277,12 @@ function M.show_files_from_multiple_commits(commits)
 					file = vim.trim(file)
 					-- Show preview from the first commit that contains this file
 					for _, commit in ipairs(commits) do
-						local preview_cmd = string.format("git show %s:%s 2>/dev/null | bat --color=always --style=header,grid --line-range=:500 --file-name='%s'", commit, file, file)
+						local preview_cmd = string.format(
+							"git show %s:%s 2>/dev/null | bat --color=always --style=header,grid --line-range=:500 --file-name='%s'",
+							commit,
+							file,
+							file
+						)
 						local handle = io.popen(preview_cmd)
 						if handle then
 							local content = handle:read("*a")
@@ -330,6 +364,201 @@ function M.show_files_from_multiple_commits(commits)
 	})
 end
 
+function M.open_all_files_from_commit_in_new_tab(branch, commit)
+	-- Get ALL files from the selected commit
+	local handle = io.popen(string.format("git show --name-only --format= %s 2>/dev/null", commit))
+	if not handle then
+		vim.notify("Failed to get files from commit " .. commit, vim.log.levels.ERROR)
+		return
+	end
+
+	local files = {}
+	for line in handle:lines() do
+		if line ~= "" then
+			table.insert(files, line)
+		end
+	end
+	handle:close()
+
+	if #files == 0 then
+		vim.notify("No files found in commit " .. commit, vim.log.levels.WARN)
+		return
+	end
+
+	-- Create new tab
+	vim.cmd("tabnew")
+
+	-- Keep track of loaded files and their order for proper window management
+	local loaded_files = {}
+	local total_files = #files
+	local first_buffer_set = false
+
+	-- Load each file from the commit sequentially
+	for _, file in ipairs(files) do
+		vim.system({ "git", "show", string.format("%s:%s", commit, file) }, { text = true }, function(result)
+			vim.schedule(function()
+				if result.code ~= 0 then
+					vim.notify(
+						string.format("File '%s' not found in commit '%s'", file, commit:sub(1, 7)),
+						vim.log.levels.WARN
+					)
+					-- Still count as "processed" to avoid hanging
+					table.insert(loaded_files, { file = file, success = false })
+					if #loaded_files == total_files then
+						vim.notify(
+							string.format(
+								"Loaded %d files from %s@%s in new tab",
+								vim.tbl_count(vim.tbl_filter(function(f)
+									return f.success
+								end, loaded_files)),
+								branch,
+								commit:sub(1, 7)
+							),
+							vim.log.levels.INFO
+						)
+					end
+					return
+				end
+
+				-- Create buffer for the file from commit (historical content)
+				local buf = vim.api.nvim_create_buf(false, true)
+				local lines = vim.split(result.stdout or "", "\n")
+				if lines[#lines] == "" then
+					table.remove(lines)
+				end
+
+				-- Add header comment with commit info at the top
+				local header_lines = {
+					string.format(
+						"# File: %s from commit %s (%s@%s)",
+						file,
+						commit:sub(1, 7),
+						branch,
+						commit:sub(1, 7)
+					),
+					"# This is historical content - not the current working tree version",
+					"",
+				}
+
+				-- Combine header with file content
+				local all_lines = {}
+				vim.list_extend(all_lines, header_lines)
+				vim.list_extend(all_lines, lines)
+
+				vim.api.nvim_buf_set_lines(buf, 0, -1, false, all_lines)
+
+				-- Set filetype based on file extension for syntax highlighting
+				local filetype = vim.filetype.match({ filename = file })
+				if filetype then
+					vim.bo[buf].filetype = filetype
+				end
+
+				-- Set buffer name to include commit info
+				local buf_name = string.format("[%s@%s] %s", branch, commit:sub(1, 7), file)
+				vim.api.nvim_buf_set_name(buf, buf_name)
+
+				-- Make buffer read-only since it's historical
+				vim.bo[buf].readonly = true
+				vim.bo[buf].modifiable = false
+
+				-- Open in appropriate window
+				if not first_buffer_set then
+					-- Replace the empty buffer in the new tab
+					vim.api.nvim_win_set_buf(0, buf)
+					first_buffer_set = true
+				else
+					-- Split and open additional files
+					vim.cmd("split")
+					vim.api.nvim_win_set_buf(0, buf)
+				end
+
+				table.insert(loaded_files, { file = file, success = true })
+
+				-- Notify when all files are loaded
+				if #loaded_files == total_files then
+					local success_count = vim.tbl_count(vim.tbl_filter(function(f)
+						return f.success
+					end, loaded_files))
+					vim.notify(
+						string.format(
+							"Opened %d files from %s@%s in new tab (historical content)",
+							success_count,
+							branch,
+							commit:sub(1, 7)
+						),
+						vim.log.levels.INFO
+					)
+				end
+			end)
+		end)
+	end
+end
+
+function M.open_files_from_branch_commit_in_new_tab()
+	local fzf = require("fzf-lua")
+
+	-- Step 1: Select branch
+	fzf.git_branches({
+		prompt = "Select branch: ",
+		fzf_opts = {
+			["--header"] = ":: Select branch to view files from ::",
+		},
+		actions = {
+			["ctrl-x"] = false,
+			["ctrl-a"] = false,
+			["default"] = function(selected)
+				if not selected or #selected == 0 then
+					return
+				end
+
+				local branch = selected[1]:match("([^%s]+)$")
+				if not branch then
+					vim.notify("Failed to extract branch name", vim.log.levels.ERROR)
+					return
+				end
+
+				M.select_commit_from_branch_for_new_tab(branch)
+			end,
+		},
+	})
+end
+
+function M.select_commit_from_branch_for_new_tab(branch)
+	local fzf = require("fzf-lua")
+
+	-- Step 2: Select commit from the chosen branch
+	fzf.git_commits({
+		prompt = string.format("Select commit from %s: ", branch),
+		cmd = M.create_colorized_git_log_cmd(
+			string.format(
+				"git log --color=always --pretty=format:'%%C(blue)%%h%%C(reset) %%C(green)%%ad%%C(reset) %%s %%C(red)%%an%%C(reset)' --date=format:'%%d/%%m/%%Y' %s -n 50",
+				branch
+			)
+		),
+		fzf_opts = {
+			["--header"] = string.format(":: Select commit from %s ::", branch),
+			["--preview"] = M.create_commit_preview_command(),
+		},
+		actions = {
+			["ctrl-x"] = false,
+			["ctrl-a"] = false,
+			["default"] = function(selected)
+				if not selected or #selected == 0 then
+					return
+				end
+
+				local commit = selected[1]:match("^(%w+)")
+				if not commit then
+					vim.notify("Failed to extract commit hash", vim.log.levels.ERROR)
+					return
+				end
+
+				M.open_all_files_from_commit_in_new_tab(branch, commit)
+			end,
+		},
+	})
+end
+
 function M.show_files_from_commit(commit)
 	local fzf = require("fzf-lua")
 
@@ -361,7 +590,11 @@ function M.show_files_from_commit(commit)
 		fzf_args = "--multi",
 		fzf_opts = {
 			["--header"] = ":: " .. commit_hash .. " :: ENTER=open files :: TAB=multi-select :: CTRL-Y=copy filenames",
-			["--preview"] = string.format("git show %s:{} 2>/dev/null | bat --color=always --style=header,grid --line-range=:500 --file-name={} || echo 'File not found at %s'", commit, commit),
+			["--preview"] = string.format(
+				"git show %s:{} 2>/dev/null | bat --color=always --style=header,grid --line-range=:500 --file-name={} || echo 'File not found at %s'",
+				commit,
+				commit
+			),
 		},
 		actions = {
 			["ctrl-y"] = function(selected)

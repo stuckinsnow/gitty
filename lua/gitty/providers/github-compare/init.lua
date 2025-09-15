@@ -22,6 +22,7 @@ function M.git_compare_commits()
 		"9. Diff Analyse - AI",
 		"10. Cherry-pick file from different branch",
 		"11. Open files from previous commits",
+		"12. Open files from branch/commit in new tab",
 	}, {
 		prompt = "Git Compare> ",
 		winopts = {
@@ -55,6 +56,8 @@ function M.git_compare_commits()
 					M.cherry_pick_file_from_branch()
 				elseif choice:match("Open files from previous commits") then
 					M.fzf_last_commit_files()
+				elseif choice:match("Open files from branch/commit in new tab") then
+					picker_utils.open_files_from_branch_commit_in_new_tab()
 				elseif choice:match("Compare commits from different branches") then
 					M.compare_by_picker()
 				end
@@ -79,6 +82,8 @@ M.pick_branch_and_commit = picker_utils.pick_branch_and_commit
 M.pick_commit_from_branch = picker_utils.pick_commit_from_branch
 M.create_colorized_git_log_cmd = picker_utils.create_colorized_git_log_cmd
 M.fzf_last_commit_files = picker_utils.fzf_last_commit_files
+M.open_files_from_branch_commit_in_new_tab = picker_utils.open_files_from_branch_commit_in_new_tab
+M.open_all_files_from_commit_in_new_tab = picker_utils.open_all_files_from_commit_in_new_tab
 
 M.setup_minidiff = minidiff_utils.setup_minidiff
 M.setup_minidiff_for_selection = minidiff_utils.setup_minidiff_for_selection
