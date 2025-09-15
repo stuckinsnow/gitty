@@ -208,6 +208,7 @@ function M.find_file_history()
 		cmd = cmd,
 		fzf_opts = {
 			["--header"] = ":: File history :: ENTER=copy short hash :: CTRL-V=split view",
+			["--preview"] = require("gitty.providers.github-compare.picker-utils").create_commit_preview_command(),
 		},
 		actions = {
 			["ctrl-y"] = false,

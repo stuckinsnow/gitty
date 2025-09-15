@@ -9,6 +9,7 @@ function M.fzf_github_analyse_ai()
 		cmd = "git log --color=always --pretty=format:'%C(blue)%h%C(reset) %C(green)%ad%C(reset) %s %C(red)%an%C(reset)' --date=format:'%d/%m/%Y' -n 50",
 		fzf_opts = {
 			["--header"] = ":: Select 1-2 commits :: ENTER=analyze with AI :: TAB=multi-select :: CTRL-Y=copy hash",
+			["--preview"] = require("gitty.providers.github-compare.picker-utils").create_commit_preview_command(),
 		},
 		actions = {
 			["ctrl-y"] = function(selected)

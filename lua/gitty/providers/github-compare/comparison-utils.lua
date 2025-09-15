@@ -259,6 +259,7 @@ function M.compare_with_minidiff()
 							":: ENTER=diff :: CTRL-V=view file at commit from %s :: CTRL-Y=copy hash",
 							branch
 						),
+						["--preview"] = picker_utils.create_commit_preview_command(),
 					},
 					actions = {
 						["ctrl-y"] = function(selected_commit)
@@ -315,6 +316,9 @@ function M.compare_selected_with_minidiff()
 
 	fzf.git_commits({
 		prompt = "Select commit for selected text diff: ",
+		fzf_opts = {
+			["--preview"] = picker_utils.create_commit_preview_command(),
+		},
 		actions = {
 			["ctrl-y"] = function(selected)
 				if not selected or #selected == 0 then
@@ -348,19 +352,22 @@ function M.compare_from_current_branch()
 		return
 	end
 
-	fzf.git_commits({
+	-- Use fzf_exec instead of git_commits to get full control over preview
+	local git_log_cmd = string.format(
+		"git log --color=always --pretty=format:'%%C(blue)%%h%%C(reset) %%C(green)%%ad%%C(reset) %%s %%C(red)%%an%%C(reset)' --date=format:'%%d/%%m/%%Y' %s -n 50",
+		current_branch
+	)
+
+	fzf.fzf_exec(git_log_cmd, {
 		prompt = string.format("Select two commits from %s: ", current_branch),
 		fzf_args = "--multi",
 		fzf_opts = {
 			["--header"] = string.format(
-				":: Multi-select two commits from %s (ENTER=diff, CTRL-E=show diff) :: CTRL-Y=copy hash",
+				":: Multi-select two commits from %s (ENTER=diff, ctrl-e=show diff) :: ctrl-y=copy hash",
 				current_branch
 			),
+			["--preview"] = picker_utils.create_commit_preview_command(),
 		},
-		cmd = string.format(
-			"git log --color=always --pretty=format:'%%C(blue)%%h%%C(reset) %%C(green)%%ad%%C(reset) %%s %%C(red)%%an%%C(reset)' --date=format:'%%d/%%m/%%Y' %s -n 50",
-			current_branch
-		),
 		actions = {
 			["ctrl-y"] = function(selected)
 				if not selected or #selected == 0 then
