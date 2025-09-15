@@ -246,14 +246,16 @@ function M.compare_with_minidiff()
 				end
 
 				-- Step 2: Select commit from the chosen branch with proper date formatting
-				fzf.git_commits({
+				-- Use fzf_exec instead of git_commits to get full control over preview
+				local git_log_cmd = picker_utils.create_colorized_git_log_cmd(
+					string.format(
+						"git log --color=always --pretty=format:'%%C(blue)%%h%%C(reset) %%C(green)%%ad%%C(reset) %%s %%C(red)%%an%%C(reset)' --date=format:'%%d/%%m/%%Y' %s -n 50",
+						branch
+					)
+				)
+
+				fzf.fzf_exec(git_log_cmd, {
 					prompt = string.format("Select commit from %s for inline diff: ", branch),
-					cmd = picker_utils.create_colorized_git_log_cmd(
-						string.format(
-							"git log --color=always --pretty=format:'%%C(blue)%%h%%C(reset) %%C(green)%%ad%%C(reset) %%s %%C(red)%%an%%C(reset)' --date=format:'%%d/%%m/%%Y' %s -n 50",
-							branch
-						)
-					),
 					fzf_opts = {
 						["--header"] = string.format(
 							":: ENTER=diff :: CTRL-V=view file at commit from %s :: CTRL-Y=copy hash",
@@ -314,7 +316,12 @@ function M.compare_selected_with_minidiff()
 		start_line, end_line = end_line, start_line
 	end
 
-	fzf.git_commits({
+	-- Use fzf_exec instead of git_commits to get full control over preview
+	local git_log_cmd = picker_utils.create_colorized_git_log_cmd(
+		"git log --color=always --pretty=format:'%C(blue)%h%C(reset) %C(green)%ad%C(reset) %s %C(red)%an%C(reset)' --date=format:'%d/%m/%Y' -n 50"
+	)
+
+	fzf.fzf_exec(git_log_cmd, {
 		prompt = "Select commit for selected text diff: ",
 		fzf_opts = {
 			["--preview"] = picker_utils.create_commit_preview_command(),

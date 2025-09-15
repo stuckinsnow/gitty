@@ -46,11 +46,13 @@ end
 function M.view_file_at_commit_picker()
 	local fzf = require("fzf-lua")
 
-	fzf.git_commits({
+	-- Use fzf_exec instead of git_commits to get full control over preview
+	local git_log_cmd = M.create_colorized_git_log_cmd(
+		"git log --color=always --pretty=format:'%C(blue)%h%C(reset) %C(green)%ad%C(reset) %s %C(red)%an%C(reset)' --date=format:'%d/%m/%Y' -n 100"
+	)
+
+	fzf.fzf_exec(git_log_cmd, {
 		prompt = "Select commit to view file: ",
-		cmd = M.create_colorized_git_log_cmd(
-			"git log --color=always --pretty=format:'%C(blue)%h%C(reset) %C(green)%ad%C(reset) %s %C(red)%an%C(reset)' --date=format:'%d/%m/%Y' -n 100"
-		),
 		fzf_opts = {
 			["--header"] = ":: Select commit to view file :: ENTER=view file at commit",
 			["--preview"] = M.create_commit_preview_command(),
@@ -106,14 +108,16 @@ end
 function M.pick_commit_from_branch(commit1, branch)
 	local fzf = require("fzf-lua")
 
-	fzf.git_commits({
+	-- Use fzf_exec instead of git_commits to get full control over preview
+	local git_log_cmd = M.create_colorized_git_log_cmd(
+		string.format(
+			"git log --color=always --pretty=format:'%%C(blue)%%h%%C(reset) %%C(green)%%ad%%C(reset) %%s %%C(red)%%an%%C(reset)' --date=format:'%%d/%%m/%%Y' %s -n 50",
+			branch
+		)
+	)
+
+	fzf.fzf_exec(git_log_cmd, {
 		prompt = string.format("Select commit from %s: ", branch),
-		cmd = M.create_colorized_git_log_cmd(
-			string.format(
-				"git log --color=always --pretty=format:'%%C(blue)%%h%%C(reset) %%C(green)%%ad%%C(reset) %%s %%C(red)%%an%%C(reset)' --date=format:'%%d/%%m/%%Y' %s -n 50",
-				branch
-			)
-		),
 		fzf_opts = {
 			["--header"] = string.format(":: Select commit from %s", branch),
 			["--preview"] = M.create_commit_preview_command(),
@@ -156,15 +160,17 @@ function M.fzf_last_commit_files()
 	end
 
 	-- Step 1: Select commit hash first
-	fzf.git_commits({
+	-- Use fzf_exec instead of git_commits to get full control over preview
+	local git_log_cmd = M.create_colorized_git_log_cmd(
+		string.format(
+			"git log --color=always --pretty=format:'%%C(blue)%%h%%C(reset) %%C(green)%%ad%%C(reset) %%s %%C(red)%%an%%C(reset)' --date=format:'%%d/%%m/%%Y' %s -n 50",
+			current_branch
+		)
+	)
+
+	fzf.fzf_exec(git_log_cmd, {
 		prompt = string.format("Select commits to view files from %s: ", current_branch),
 		fzf_args = "--multi",
-		cmd = M.create_colorized_git_log_cmd(
-			string.format(
-				"git log --color=always --pretty=format:'%%C(blue)%%h%%C(reset) %%C(green)%%ad%%C(reset) %%s %%C(red)%%an%%C(reset)' --date=format:'%%d/%%m/%%Y' %s -n 50",
-				current_branch
-			)
-		),
 		fzf_opts = {
 			["--header"] = string.format(
 				":: Select commits from %s :: ENTER=view files :: TAB=multi-select :: CTRL-Y=copy hash",
@@ -527,14 +533,16 @@ function M.select_commit_from_branch_for_new_tab(branch)
 	local fzf = require("fzf-lua")
 
 	-- Step 2: Select commit from the chosen branch
-	fzf.git_commits({
+	-- Use fzf_exec instead of git_commits to get full control over preview
+	local git_log_cmd = M.create_colorized_git_log_cmd(
+		string.format(
+			"git log --color=always --pretty=format:'%%C(blue)%%h%%C(reset) %%C(green)%%ad%%C(reset) %%s %%C(red)%%an%%C(reset)' --date=format:'%%d/%%m/%%Y' %s -n 50",
+			branch
+		)
+	)
+
+	fzf.fzf_exec(git_log_cmd, {
 		prompt = string.format("Select commit from %s: ", branch),
-		cmd = M.create_colorized_git_log_cmd(
-			string.format(
-				"git log --color=always --pretty=format:'%%C(blue)%%h%%C(reset) %%C(green)%%ad%%C(reset) %%s %%C(red)%%an%%C(reset)' --date=format:'%%d/%%m/%%Y' %s -n 50",
-				branch
-			)
-		),
 		fzf_opts = {
 			["--header"] = string.format(":: Select commit from %s ::", branch),
 			["--preview"] = M.create_commit_preview_command(),

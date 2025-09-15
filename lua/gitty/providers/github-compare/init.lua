@@ -136,16 +136,19 @@ function M.select_commit_from_branch_for_cherry_pick(branch, relative_path, curr
 	local fzf = require("fzf-lua")
 	
 	-- Step 2: Select commit from the chosen branch
-	fzf.git_commits({
+	-- Use fzf_exec instead of git_commits to get full control over preview
+	local git_log_cmd = picker_utils.create_colorized_git_log_cmd(
+		string.format(
+			"git log --color=always --pretty=format:'%%C(blue)%%h%%C(reset) %%C(green)%%ad%%C(reset) %%s %%C(red)%%an%%C(reset)' --date=format:'%%d/%%m/%%Y' %s -n 50",
+			branch
+		)
+	)
+
+	fzf.fzf_exec(git_log_cmd, {
 		prompt = string.format("Select commit from %s: ", branch),
-		cmd = picker_utils.create_colorized_git_log_cmd(
-			string.format(
-				"git log --color=always --pretty=format:'%%C(blue)%%h%%C(reset) %%C(green)%%ad%%C(reset) %%s %%C(red)%%an%%C(reset)' --date=format:'%%d/%%m/%%Y' %s -n 50",
-				branch
-			)
-		),
 		fzf_opts = {
 			["--header"] = string.format(":: Select commit from %s for %s ::", branch, vim.fn.fnamemodify(current_file, ":t")),
+			["--preview"] = picker_utils.create_commit_preview_command(),
 		},
 		actions = {
 			["ctrl-x"] = false,

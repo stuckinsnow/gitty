@@ -2,14 +2,19 @@ local M = {}
 
 function M.fzf_github_analyse_ai()
 	local fzf = require("fzf-lua")
+	local picker_utils = require("gitty.providers.github-compare.picker-utils")
 
-	fzf.git_commits({
+	-- Use fzf_exec instead of git_commits to get full control over preview
+	local git_log_cmd = picker_utils.create_colorized_git_log_cmd(
+		"git log --color=always --pretty=format:'%C(blue)%h%C(reset) %C(green)%ad%C(reset) %s %C(red)%an%C(reset)' --date=format:'%d/%m/%Y' -n 50"
+	)
+
+	fzf.fzf_exec(git_log_cmd, {
 		prompt = "Select 1-2 commits for AI analysis (TAB to multi-select): ",
 		fzf_args = "--multi",
-		cmd = "git log --color=always --pretty=format:'%C(blue)%h%C(reset) %C(green)%ad%C(reset) %s %C(red)%an%C(reset)' --date=format:'%d/%m/%Y' -n 50",
 		fzf_opts = {
 			["--header"] = ":: Select 1-2 commits :: ENTER=analyze with AI :: TAB=multi-select :: CTRL-Y=copy hash",
-			["--preview"] = require("gitty.providers.github-compare.picker-utils").create_commit_preview_command(),
+			["--preview"] = picker_utils.create_commit_preview_command(),
 		},
 		actions = {
 			["ctrl-y"] = function(selected)
