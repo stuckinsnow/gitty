@@ -203,11 +203,12 @@ function M.find_file_history()
 	local cmd = base_cmd
 		.. " | sed -E 's/^(.*) (feat[^[:space:]]*)/\\1 \\x1b[33m\\2\\x1b[0m/I; s/^(.*) (fix[^[:space:]]*)/\\1 \\x1b[32m\\2\\x1b[0m/I; s/^(.*) (chore[^[:space:]]*)/\\1 \\x1b[31m\\2\\x1b[0m/I; s/^(.*) (add[^[:space:]]*)/\\1 \\x1b[35m\\2\\x1b[0m/I'"
 
-	fzf.git_commits({
+	-- Use fzf_exec instead of git_commits to get full control over preview
+	fzf.fzf_exec(cmd, {
 		prompt = string.format("Commits that modified %s: ", vim.fn.fnamemodify(file_path, ":t")),
-		cmd = cmd,
 		fzf_opts = {
 			["--header"] = ":: File history :: ENTER=copy short hash :: CTRL-V=split view",
+			["--preview"] = require("gitty.providers.github-compare.picker-utils").create_commit_preview_command(),
 		},
 		actions = {
 			["ctrl-y"] = false,

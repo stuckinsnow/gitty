@@ -71,6 +71,9 @@ require("gitty").setup({
   preview_height = 0.4,                 -- Height of preview windows (0.0-1.0)
   split_diff_treesitter_left = true,    -- Enable syntax highlighting in left split diff window (current version)
   split_diff_treesitter_right = false,  -- Enable syntax highlighting in right split diff window (commit version)
+  -- Commit preview options
+  show_commit_files_in_preview = true,  -- Show files changed in commit preview
+  enhanced_commit_preview = true,       -- Use enhanced styling (delta + line numbers) in commit preview
 })
 ```
 
@@ -81,6 +84,11 @@ require("gitty").setup({
 - **`preview_height`** (number, default: `0.4`): Height ratio for preview windows (0.0 to 1.0)
 - **`split_diff_treesitter_left`** (boolean, default: `true`): Enable tree-sitter syntax highlighting in the left split diff window (current version). When disabled, shows plain text for better performance and focus on differences.
 - **`split_diff_treesitter_right`** (boolean, default: `false`): Enable tree-sitter syntax highlighting in the right split diff window (commit version). When disabled, shows plain text for better performance and focus on differences.
+
+#### Commit Preview Options
+
+- **`show_commit_files_in_preview`** (boolean, default: `true`): Show files changed at the top of commit previews. When enabled, commit pickers will display a list of changed files followed by the git diff. When disabled, shows only the standard git commit details.
+- **`enhanced_commit_preview`** (boolean, default: `true`): Use enhanced styling with delta and line numbers in commit previews. When enabled, uses delta for beautiful syntax-highlighted diffs with line numbers. When disabled, uses standard git colored output.
 
 ---
 

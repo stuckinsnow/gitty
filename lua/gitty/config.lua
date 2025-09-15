@@ -7,6 +7,9 @@ local defaults = {
 	preview_height = 0.4,
 	split_diff_treesitter_left = true,
 	split_diff_treesitter_right = false,
+	-- Commit preview options
+	show_commit_files_in_preview = true, -- Show files changed in commit preview
+	enhanced_commit_preview = true, -- Use enhanced styling (delta + line numbers) in commit preview
 }
 
 M.options = {}

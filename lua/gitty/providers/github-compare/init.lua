@@ -21,8 +21,8 @@ function M.git_compare_commits()
 		"8. Copy blame commit hash",
 		"9. Diff Analyse - AI",
 		"10. Cherry-pick file from different branch",
-		"11. Open files from previous commits",
-		"12. Open files from branch/commit in new tab",
+		"11. Open files from branch/commit in new tab",
+		"12. Open files from previous commits",
 	}, {
 		prompt = "Git Compare> ",
 		winopts = {
@@ -54,10 +54,10 @@ function M.git_compare_commits()
 					github_compare_ai.fzf_github_analyse_ai()
 				elseif choice:match("Cherry%-pick file from different branch") then
 					M.cherry_pick_file_from_branch()
-				elseif choice:match("Open files from previous commits") then
-					M.fzf_last_commit_files()
 				elseif choice:match("Open files from branch/commit in new tab") then
 					picker_utils.open_files_from_branch_commit_in_new_tab()
+				elseif choice:match("Open files from previous commits") then
+					M.fzf_last_commit_files()
 				elseif choice:match("Compare commits from different branches") then
 					M.compare_by_picker()
 				end
@@ -136,16 +136,19 @@ function M.select_commit_from_branch_for_cherry_pick(branch, relative_path, curr
 	local fzf = require("fzf-lua")
 	
 	-- Step 2: Select commit from the chosen branch
-	fzf.git_commits({
+	-- Use fzf_exec instead of git_commits to get full control over preview
+	local git_log_cmd = picker_utils.create_colorized_git_log_cmd(
+		string.format(
+			"git log --color=always --pretty=format:'%%C(blue)%%h%%C(reset) %%C(green)%%ad%%C(reset) %%s %%C(red)%%an%%C(reset)' --date=format:'%%d/%%m/%%Y' %s -n 50",
+			branch
+		)
+	)
+
+	fzf.fzf_exec(git_log_cmd, {
 		prompt = string.format("Select commit from %s: ", branch),
-		cmd = picker_utils.create_colorized_git_log_cmd(
-			string.format(
-				"git log --color=always --pretty=format:'%%C(blue)%%h%%C(reset) %%C(green)%%ad%%C(reset) %%s %%C(red)%%an%%C(reset)' --date=format:'%%d/%%m/%%Y' %s -n 50",
-				branch
-			)
-		),
 		fzf_opts = {
 			["--header"] = string.format(":: Select commit from %s for %s ::", branch, vim.fn.fnamemodify(current_file, ":t")),
+			["--preview"] = picker_utils.create_commit_preview_command(),
 		},
 		actions = {
 			["ctrl-x"] = false,
