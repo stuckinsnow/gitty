@@ -21,7 +21,7 @@ function M.git_compare_commits()
 		"8. Copy blame commit hash",
 		"9. Diff Analyse - AI",
 		"10. Cherry-pick file from different branch",
-		"11. Open files from branch/commit in new tab",
+		"11. Open files from commit in new tab",
 		"12. Open files from previous commits",
 	}, {
 		prompt = "Git Compare> ",
@@ -61,8 +61,8 @@ function M.git_compare_commits()
 				elseif choice:match("Compare commits from different branches") then
 					M.compare_by_picker()
 				end
-			end
-		}
+			end,
+		},
 	})
 end
 
@@ -98,14 +98,14 @@ M.copy_blame_commit_hash = blame_utils.copy_blame_commit_hash_for_current_line
 function M.cherry_pick_file_from_branch()
 	local fzf = require("fzf-lua")
 	local current_file = vim.api.nvim_buf_get_name(0)
-	
+
 	if current_file == "" then
 		vim.notify("No file in current buffer", vim.log.levels.ERROR)
 		return
 	end
-	
+
 	local relative_path = vim.fn.fnamemodify(current_file, ":~:.")
-	
+
 	-- Step 1: Select branch
 	fzf.git_branches({
 		prompt = "Select branch to cherry-pick file from: ",
@@ -119,13 +119,13 @@ function M.cherry_pick_file_from_branch()
 				if not selected or #selected == 0 then
 					return
 				end
-				
+
 				local branch = selected[1]:match("([^%s]+)$")
 				if not branch then
 					vim.notify("Failed to extract branch name", vim.log.levels.ERROR)
 					return
 				end
-				
+
 				M.select_commit_from_branch_for_cherry_pick(branch, relative_path, current_file)
 			end,
 		},
@@ -134,7 +134,7 @@ end
 
 function M.select_commit_from_branch_for_cherry_pick(branch, relative_path, current_file)
 	local fzf = require("fzf-lua")
-	
+
 	-- Step 2: Select commit from the chosen branch
 	-- Use fzf_exec instead of git_commits to get full control over preview
 	local git_log_cmd = picker_utils.create_colorized_git_log_cmd(
@@ -147,7 +147,11 @@ function M.select_commit_from_branch_for_cherry_pick(branch, relative_path, curr
 	fzf.fzf_exec(git_log_cmd, {
 		prompt = string.format("Select commit from %s: ", branch),
 		fzf_opts = {
-			["--header"] = string.format(":: Select commit from %s for %s ::", branch, vim.fn.fnamemodify(current_file, ":t")),
+			["--header"] = string.format(
+				":: Select commit from %s for %s ::",
+				branch,
+				vim.fn.fnamemodify(current_file, ":t")
+			),
 			["--preview"] = picker_utils.create_commit_preview_command(),
 		},
 		actions = {
@@ -157,13 +161,13 @@ function M.select_commit_from_branch_for_cherry_pick(branch, relative_path, curr
 				if not selected or #selected == 0 then
 					return
 				end
-				
+
 				local commit = selected[1]:match("^(%w+)")
 				if not commit then
 					vim.notify("Failed to extract commit hash", vim.log.levels.ERROR)
 					return
 				end
-				
+
 				M.show_file_from_commit_with_cherry_pick(branch, commit, relative_path, current_file)
 			end,
 		},
@@ -172,87 +176,124 @@ end
 
 function M.show_file_from_commit_with_cherry_pick(branch, commit, relative_path, current_file)
 	-- Get the file content from the specific commit
-	vim.system(
-		{ "git", "show", string.format("%s:%s", commit, relative_path) },
-		{ text = true },
-		function(result)
-			vim.schedule(function()
-				if result.code ~= 0 then
-					vim.notify(string.format("File '%s' not found in commit '%s'", relative_path, commit:sub(1, 7)), vim.log.levels.ERROR)
-					return
-				end
-
-				-- Create buffer for the branch version
-				local branch_buf = vim.api.nvim_create_buf(false, true)
-				local branch_lines = vim.split(result.stdout or "", "\n")
-				if branch_lines[#branch_lines] == "" then
-					table.remove(branch_lines)
-				end
-
-				vim.api.nvim_buf_set_lines(branch_buf, 0, -1, false, branch_lines)
-				
-				-- Set same filetype as current buffer for syntax highlighting
-				local current_buf = vim.api.nvim_get_current_buf()
-				vim.bo[branch_buf].filetype = vim.bo[current_buf].filetype
-				
-				-- Create split to show the file from the branch
-				local current_win = vim.api.nvim_get_current_win()
-				vim.cmd("vsplit")
-				local branch_win = vim.api.nvim_get_current_win()
-				vim.api.nvim_win_set_buf(branch_win, branch_buf)
-				
-				-- Set window titles
-				vim.wo[current_win].winbar = "%#GittyCurrentTitle#Current (" .. vim.fn.fnamemodify(current_file, ":t") .. ")"
-				vim.wo[branch_win].winbar = "%#GittyBranchTitle#" .. branch .. "@" .. commit:sub(1, 7) .. " (" .. vim.fn.fnamemodify(current_file, ":t") .. ")"
-				
-				-- Set up keymaps for cherry-picking
-				vim.keymap.set("n", "<CR>", function()
-					M.confirm_cherry_pick_from_commit(branch, commit, relative_path, current_file, branch_buf, branch_win, current_win, current_buf)
-				end, { buffer = branch_buf, desc = "Cherry-pick this file content" })
-				
-				vim.keymap.set("n", "<leader>q", function()
-					M.close_cherry_pick_view(branch_buf, branch_win, current_win)
-				end, { buffer = branch_buf, desc = "Close cherry-pick view" })
-				
-				-- Also add the same keymaps to current buffer for convenience
-				vim.keymap.set("n", "<leader>q", function()
-					M.close_cherry_pick_view(branch_buf, branch_win, current_win)
-				end, { buffer = current_buf, desc = "Close cherry-pick view" })
-
+	vim.system({ "git", "show", string.format("%s:%s", commit, relative_path) }, { text = true }, function(result)
+		vim.schedule(function()
+			if result.code ~= 0 then
 				vim.notify(
-					string.format("Viewing '%s' from %s@%s | <CR>=cherry-pick | <leader>q=close", 
-						vim.fn.fnamemodify(current_file, ":t"), branch, commit:sub(1, 7)),
-					vim.log.levels.INFO
+					string.format("File '%s' not found in commit '%s'", relative_path, commit:sub(1, 7)),
+					vim.log.levels.ERROR
 				)
-			end)
-		end
-	)
+				return
+			end
+
+			-- Create buffer for the branch version
+			local branch_buf = vim.api.nvim_create_buf(false, true)
+			local branch_lines = vim.split(result.stdout or "", "\n")
+			if branch_lines[#branch_lines] == "" then
+				table.remove(branch_lines)
+			end
+
+			vim.api.nvim_buf_set_lines(branch_buf, 0, -1, false, branch_lines)
+
+			-- Set same filetype as current buffer for syntax highlighting
+			local current_buf = vim.api.nvim_get_current_buf()
+			vim.bo[branch_buf].filetype = vim.bo[current_buf].filetype
+
+			-- Create split to show the file from the branch
+			local current_win = vim.api.nvim_get_current_win()
+			vim.cmd("vsplit")
+			local branch_win = vim.api.nvim_get_current_win()
+			vim.api.nvim_win_set_buf(branch_win, branch_buf)
+
+			-- Set window titles
+			vim.wo[current_win].winbar = "%#GittyCurrentTitle#Current ("
+				.. vim.fn.fnamemodify(current_file, ":t")
+				.. ")"
+			vim.wo[branch_win].winbar = "%#GittyBranchTitle#"
+				.. branch
+				.. "@"
+				.. commit:sub(1, 7)
+				.. " ("
+				.. vim.fn.fnamemodify(current_file, ":t")
+				.. ")"
+
+			-- Set up keymaps for cherry-picking
+			vim.keymap.set("n", "<CR>", function()
+				M.confirm_cherry_pick_from_commit(
+					branch,
+					commit,
+					relative_path,
+					current_file,
+					branch_buf,
+					branch_win,
+					current_win,
+					current_buf
+				)
+			end, { buffer = branch_buf, desc = "Cherry-pick this file content" })
+
+			vim.keymap.set("n", "<leader>q", function()
+				M.close_cherry_pick_view(branch_buf, branch_win, current_win)
+			end, { buffer = branch_buf, desc = "Close cherry-pick view" })
+
+			-- Also add the same keymaps to current buffer for convenience
+			vim.keymap.set("n", "<leader>q", function()
+				M.close_cherry_pick_view(branch_buf, branch_win, current_win)
+			end, { buffer = current_buf, desc = "Close cherry-pick view" })
+
+			vim.notify(
+				string.format(
+					"Viewing '%s' from %s@%s | <CR>=cherry-pick | <leader>q=close",
+					vim.fn.fnamemodify(current_file, ":t"),
+					branch,
+					commit:sub(1, 7)
+				),
+				vim.log.levels.INFO
+			)
+		end)
+	end)
 end
 
-function M.confirm_cherry_pick_from_commit(branch, commit, relative_path, current_file, branch_buf, branch_win, current_win, target_buf)
+function M.confirm_cherry_pick_from_commit(
+	branch,
+	commit,
+	relative_path,
+	current_file,
+	branch_buf,
+	branch_win,
+	current_win,
+	target_buf
+)
 	local choice = vim.fn.confirm(
-		string.format("Cherry-pick file '%s' from %s@%s?\nThis will replace the current file content.", 
-			vim.fn.fnamemodify(current_file, ":t"), branch, commit:sub(1, 7)),
+		string.format(
+			"Cherry-pick file '%s' from %s@%s?\nThis will replace the current file content.",
+			vim.fn.fnamemodify(current_file, ":t"),
+			branch,
+			commit:sub(1, 7)
+		),
 		"&Yes\n&No",
 		2
 	)
-	
+
 	if choice == 1 then
 		-- Get content from branch buffer
 		local branch_lines = vim.api.nvim_buf_get_lines(branch_buf, 0, -1, false)
-		
+
 		-- Replace target buffer content (the original file buffer)
 		vim.api.nvim_buf_set_lines(target_buf, 0, -1, false, branch_lines)
-		
+
 		-- Mark buffer as modified
 		vim.bo[target_buf].modified = true
-		
+
 		-- Close the cherry-pick view
 		M.close_cherry_pick_view(branch_buf, branch_win, current_win)
-		
+
 		vim.notify(
-			string.format("Cherry-picked '%s' from %s@%s", 
-				vim.fn.fnamemodify(current_file, ":t"), branch, commit:sub(1, 7)),
+			string.format(
+				"Cherry-picked '%s' from %s@%s",
+				vim.fn.fnamemodify(current_file, ":t"),
+				branch,
+				commit:sub(1, 7)
+			),
 			vim.log.levels.INFO
 		)
 	end
@@ -264,7 +305,7 @@ function M.close_cherry_pick_view(branch_buf, branch_win, current_win)
 	pcall(vim.keymap.del, "n", "<leader>q", { buffer = current_buf })
 	pcall(vim.keymap.del, "n", "<CR>", { buffer = branch_buf })
 	pcall(vim.keymap.del, "n", "<leader>q", { buffer = branch_buf })
-	
+
 	-- Close window and delete buffer
 	if vim.api.nvim_win_is_valid(branch_win) then
 		vim.api.nvim_win_close(branch_win, true)
@@ -272,7 +313,7 @@ function M.close_cherry_pick_view(branch_buf, branch_win, current_win)
 	if vim.api.nvim_buf_is_valid(branch_buf) then
 		vim.api.nvim_buf_delete(branch_buf, { force = true })
 	end
-	
+
 	-- Clear window titles
 	if vim.api.nvim_win_is_valid(current_win) then
 		vim.wo[current_win].winbar = ""
