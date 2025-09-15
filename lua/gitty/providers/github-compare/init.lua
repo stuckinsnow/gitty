@@ -21,8 +21,8 @@ function M.git_compare_commits()
 		"8. Copy blame commit hash",
 		"9. Diff Analyse - AI",
 		"10. Cherry-pick file from different branch",
-		"11. Open files from previous commits",
-		"12. Open files from branch/commit in new tab",
+		"11. Open files from branch/commit in new tab",
+		"12. Open files from previous commits",
 	}, {
 		prompt = "Git Compare> ",
 		winopts = {
@@ -54,10 +54,10 @@ function M.git_compare_commits()
 					github_compare_ai.fzf_github_analyse_ai()
 				elseif choice:match("Cherry%-pick file from different branch") then
 					M.cherry_pick_file_from_branch()
-				elseif choice:match("Open files from previous commits") then
-					M.fzf_last_commit_files()
 				elseif choice:match("Open files from branch/commit in new tab") then
 					picker_utils.open_files_from_branch_commit_in_new_tab()
+				elseif choice:match("Open files from previous commits") then
+					M.fzf_last_commit_files()
 				elseif choice:match("Compare commits from different branches") then
 					M.compare_by_picker()
 				end
