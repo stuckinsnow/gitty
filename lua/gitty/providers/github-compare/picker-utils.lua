@@ -651,4 +651,286 @@ function M.show_files_from_commit(commit)
 	})
 end
 
+function M.browse_files_at_commit()
+	local fzf = require("fzf-lua")
+
+	-- Step 1: Select branch
+	fzf.git_branches({
+		prompt = "Select branch to browse files: ",
+		fzf_opts = {
+			["--header"] = ":: Select branch to browse files at commit ::",
+		},
+		actions = {
+			["ctrl-x"] = false,
+			["ctrl-a"] = false,
+			["default"] = function(selected)
+				if not selected or #selected == 0 then
+					return
+				end
+
+				local branch = selected[1]:match("([^%s]+)$")
+				if not branch then
+					vim.notify("Failed to extract branch name", vim.log.levels.ERROR)
+					return
+				end
+
+				M.select_commit_for_file_browser(branch)
+			end,
+		},
+	})
+end
+
+function M.select_commit_for_file_browser(branch)
+	local fzf = require("fzf-lua")
+
+	-- Step 2: Select commit from the chosen branch
+	local git_log_cmd = M.create_colorized_git_log_cmd(
+		string.format(
+			"git log --color=always --pretty=format:'%%C(blue)%%h%%C(reset) %%C(green)%%ad%%C(reset) %%s %%C(red)%%an%%C(reset)' --date=format:'%%d/%%m/%%Y' %s -n 50",
+			branch
+		)
+	)
+
+	fzf.fzf_exec(git_log_cmd, {
+		prompt = string.format("Select commit from %s to browse files: ", branch),
+		fzf_opts = {
+			["--header"] = string.format(":: Select commit from %s :: ENTER=file picker :: CTRL-V=mini.files", branch),
+			["--preview"] = M.create_commit_preview_command(),
+		},
+		actions = {
+			["ctrl-x"] = false,
+			["ctrl-a"] = false,
+			["default"] = function(selected)
+				if not selected or #selected == 0 then
+					return
+				end
+
+				local commit = selected[1]:match("^(%w+)")
+				if not commit then
+					vim.notify("Failed to extract commit hash", vim.log.levels.ERROR)
+					return
+				end
+
+				M.show_file_picker_at_commit(branch, commit)
+			end,
+			["ctrl-v"] = function(selected)
+				if not selected or #selected == 0 then
+					return
+				end
+
+				local commit = selected[1]:match("^(%w+)")
+				if not commit then
+					vim.notify("Failed to extract commit hash", vim.log.levels.ERROR)
+					return
+				end
+
+				M.open_mini_files_at_commit(branch, commit)
+			end,
+		},
+	})
+end
+
+function M.show_file_picker_at_commit(branch, commit)
+	local fzf = require("fzf-lua")
+
+	-- Get all files from the commit
+	local handle = io.popen(string.format("git ls-tree -r --name-only %s 2>/dev/null", commit))
+	if not handle then
+		vim.notify("Failed to get files from commit " .. commit, vim.log.levels.ERROR)
+		return
+	end
+
+	local files = {}
+	for line in handle:lines() do
+		if line ~= "" then
+			table.insert(files, line)
+		end
+	end
+	handle:close()
+
+	if #files == 0 then
+		vim.notify("No files found in commit " .. commit, vim.log.levels.WARN)
+		return
+	end
+
+	fzf.fzf_exec(files, {
+		prompt = string.format("Browse files from %s@%s: ", branch, commit:sub(1, 7)),
+		fzf_args = "--multi",
+		fzf_opts = {
+			["--header"] = string.format(
+				":: %s@%s :: ENTER=open :: CTRL-V=vsplit :: CTRL-S=hsplit",
+				branch,
+				commit:sub(1, 7)
+			),
+			["--preview"] = string.format(
+				"git show %s:{} 2>/dev/null | bat --color=always --style=header,grid --line-range=:500 --file-name={} || echo 'File not found at %s'",
+				commit,
+				commit
+			),
+		},
+		actions = {
+			["default"] = function(selected)
+				if not selected or #selected == 0 then
+					return
+				end
+
+				for _, file in ipairs(selected) do
+					M.open_file_from_commit_with_winbar(branch, commit, file)
+				end
+			end,
+			["ctrl-v"] = function(selected)
+				if not selected or #selected == 0 then
+					return
+				end
+
+				for _, file in ipairs(selected) do
+					M.open_file_from_commit_with_winbar(branch, commit, file, "vsplit")
+				end
+			end,
+			["ctrl-s"] = function(selected)
+				if not selected or #selected == 0 then
+					return
+				end
+
+				for _, file in ipairs(selected) do
+					M.open_file_from_commit_with_winbar(branch, commit, file, "split")
+				end
+			end,
+		},
+	})
+end
+
+function M.open_file_from_commit_with_winbar(branch, commit, file, split_cmd)
+	-- Get the file content from the specific commit
+	vim.system({ "git", "show", string.format("%s:%s", commit, file) }, { text = true }, function(result)
+		vim.schedule(function()
+			if result.code ~= 0 then
+				vim.notify(
+					string.format("File '%s' not found in commit '%s'", file, commit:sub(1, 7)),
+					vim.log.levels.ERROR
+				)
+				return
+			end
+
+			-- Create buffer for the file from commit
+			local buf = vim.api.nvim_create_buf(false, true)
+			local lines = vim.split(result.stdout or "", "\n")
+			if lines[#lines] == "" then
+				table.remove(lines)
+			end
+
+			vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+
+			-- Set filetype for syntax highlighting
+			local filetype = vim.filetype.match({ filename = file })
+			if filetype then
+				vim.bo[buf].filetype = filetype
+			end
+
+			-- Set buffer name
+			local buf_name = string.format("[%s@%s] %s", branch, commit:sub(1, 7), file)
+			vim.api.nvim_buf_set_name(buf, buf_name)
+
+			-- Make buffer read-only
+			vim.bo[buf].readonly = true
+			vim.bo[buf].modifiable = false
+
+			-- Open in appropriate window (same tab by default)
+			if split_cmd then
+				vim.cmd(split_cmd)
+			else
+				-- Open in current window/tab
+				local current_win = vim.api.nvim_get_current_win()
+				vim.api.nvim_win_set_buf(current_win, buf)
+			end
+
+			local win = vim.api.nvim_get_current_win()
+
+			-- Set winbar with commit info
+			vim.wo[win].winbar = string.format("%%#GittySplitRightTitle#%s@%s: %s", branch, commit:sub(1, 7), file)
+
+			vim.notify(string.format("Opened %s from %s@%s", file, branch, commit:sub(1, 7)), vim.log.levels.INFO)
+		end)
+	end)
+end
+
+function M.open_mini_files_at_commit(branch, commit)
+	-- Check if mini.files is available
+	local has_mini_files, mini_files = pcall(require, "mini.files")
+	if not has_mini_files then
+		vim.notify("mini.files is not available. Please install mini.files plugin.", vim.log.levels.ERROR)
+		return
+	end
+
+	-- Create a temporary directory for the commit files
+	local temp_dir = vim.fn.tempname() .. "_gitty_" .. commit:sub(1, 7)
+	vim.fn.mkdir(temp_dir, "p")
+
+	-- Get all files from the commit
+	local handle = io.popen(string.format("git ls-tree -r --name-only %s 2>/dev/null", commit))
+	if not handle then
+		vim.notify("Failed to get files from commit " .. commit, vim.log.levels.ERROR)
+		return
+	end
+
+	local files = {}
+	for line in handle:lines() do
+		if line ~= "" then
+			table.insert(files, line)
+		end
+	end
+	handle:close()
+
+	if #files == 0 then
+		vim.notify("No files found in commit " .. commit, vim.log.levels.WARN)
+		return
+	end
+
+	-- Extract files to temp directory
+	local files_extracted = 0
+	local total_files = #files
+
+	for _, file in ipairs(files) do
+		vim.system({ "git", "show", string.format("%s:%s", commit, file) }, { text = true }, function(result)
+			vim.schedule(function()
+				if result.code == 0 then
+					-- Create directory structure
+					local file_path = temp_dir .. "/" .. file
+					local dir_path = vim.fn.fnamemodify(file_path, ":h")
+					vim.fn.mkdir(dir_path, "p")
+
+					-- Write file content
+					local f = io.open(file_path, "w")
+					if f then
+						f:write(result.stdout or "")
+						f:close()
+					end
+				end
+
+				files_extracted = files_extracted + 1
+
+				-- When all files are extracted, open mini.files
+				if files_extracted == total_files then
+					-- Simple cleanup on mini.files close
+					vim.api.nvim_create_autocmd("User", {
+						pattern = "MiniFilesWindowClose",
+						callback = function()
+							vim.fn.delete(temp_dir, "rf")
+						end,
+						once = true,
+					})
+
+					-- Open mini.files at the temp directory
+					mini_files.open(temp_dir)
+
+					vim.notify(
+						string.format("Mini Files opened at %s@%s (%d files)", branch, commit:sub(1, 7), total_files),
+						vim.log.levels.INFO
+					)
+				end
+			end)
+		end)
+	end
+end
+
 return M
