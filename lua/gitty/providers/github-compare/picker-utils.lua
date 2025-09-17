@@ -775,7 +775,7 @@ function M.show_file_picker_at_commit(branch, commit)
 				end
 
 				for _, file in ipairs(selected) do
-					M.open_file_from_commit_with_winbar(branch, commit, file)
+					M.open_file_from_commit_with_winbar(branch, commit, file, "tabnew")
 				end
 			end,
 			["ctrl-v"] = function(selected)
@@ -836,8 +836,20 @@ function M.open_file_from_commit_with_winbar(branch, commit, file, split_cmd)
 			vim.bo[buf].modifiable = false
 
 			-- Open in appropriate window (same tab by default)
-			if split_cmd then
+			if split_cmd == "tabnew" then
+				-- Create new tab and set buffer
+				vim.cmd("tabnew")
+				local empty_buf = vim.api.nvim_get_current_buf()
+				local new_win = vim.api.nvim_get_current_win()
+				vim.api.nvim_win_set_buf(new_win, buf)
+				-- Delete the empty buffer created by tabnew if it's empty and unnamed
+				if vim.api.nvim_buf_is_valid(empty_buf) and vim.api.nvim_buf_get_name(empty_buf) == ""
+				   and not vim.bo[empty_buf].modified then
+					vim.api.nvim_buf_delete(empty_buf, { force = true })
+				end
+			elseif split_cmd then
 				vim.cmd(split_cmd)
+				vim.api.nvim_win_set_buf(0, buf)
 			else
 				-- Open in current window/tab
 				local current_win = vim.api.nvim_get_current_win()
