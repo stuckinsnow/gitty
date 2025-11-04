@@ -110,15 +110,19 @@ function M.cherry_pick_file_from_branch()
 
 	local relative_path = vim.fn.fnamemodify(current_file, ":~:.")
 
-	-- Step 1: Select branch
+	-- Step 1: Select branch or use reflog
 	fzf.git_branches({
 		prompt = "Select branch to cherry-pick file from: ",
 		fzf_opts = {
-			["--header"] = ":: Select source branch for " .. vim.fn.fnamemodify(current_file, ":t") .. " ::",
+			["--header"] = ":: Select source branch for " .. vim.fn.fnamemodify(current_file, ":t") .. " :: ENTER=branch :: CTRL-L=reflog ::",
 		},
 		actions = {
 			["ctrl-x"] = false,
 			["ctrl-a"] = false,
+			["ctrl-l"] = function(selected)
+				-- Use reflog instead of branch
+				M.select_commit_from_reflog_for_cherry_pick(relative_path, current_file)
+			end,
 			["default"] = function(selected)
 				if not selected or #selected == 0 then
 					return
@@ -131,6 +135,57 @@ function M.cherry_pick_file_from_branch()
 				end
 
 				M.select_commit_from_branch_for_cherry_pick(branch, relative_path, current_file)
+			end,
+		},
+	})
+end
+
+function M.select_commit_from_reflog_for_cherry_pick(relative_path, current_file)
+	local fzf = require("fzf-lua")
+
+	-- Get current branch for reflog
+	local current_branch = vim.fn.system("git branch --show-current"):gsub("%s+", "")
+	if current_branch == "" then
+		vim.notify("Failed to get current branch", vim.log.levels.ERROR)
+		return
+	end
+
+	-- Get reflog entries - shows commits that were in the branch history but may now be squashed
+	local reflog_base_cmd = string.format(
+		"git reflog %s --color=always --pretty=format:'%%C(blue)%%h%%C(reset) %%s %%C(red)%%an%%C(reset)' | head -50",
+		current_branch
+	)
+
+	-- Apply colorization for commit types (feat, fix, chore, add)
+	local reflog_cmd = reflog_base_cmd
+		.. " | sed -E 's/^(.*) (feat[^[:space:]]*)/\\1 \\x1b[33m\\2\\x1b[0m/I; s/^(.*) (fix[^[:space:]]*)/\\1 \\x1b[32m\\2\\x1b[0m/I; s/^(.*) (chore[^[:space:]]*)/\\1 \\x1b[31m\\2\\x1b[0m/I; s/^(.*) (add[^[:space:]]*)/\\1 \\x1b[35m\\2\\x1b[0m/I'"
+
+	fzf.fzf_exec(reflog_cmd, {
+		prompt = string.format("Select commit from %s reflog: ", current_branch),
+		fzf_opts = {
+			["--header"] = string.format(
+				":: Reflog for %s (includes squashed commits) for %s ::",
+				current_branch,
+				vim.fn.fnamemodify(current_file, ":t")
+			),
+			["--preview"] = picker_utils.create_commit_preview_command(),
+		},
+		actions = {
+			["ctrl-x"] = false,
+			["ctrl-a"] = false,
+			["default"] = function(selected)
+				if not selected or #selected == 0 then
+					return
+				end
+
+				local commit = selected[1]:match("^(%w+)")
+				if not commit then
+					vim.notify("Failed to extract commit hash", vim.log.levels.ERROR)
+					return
+				end
+
+				-- For reflog, we show it as "reflog@commit" instead of "branch@commit"
+				M.show_file_from_commit_with_cherry_pick("reflog", commit, relative_path, current_file)
 			end,
 		},
 	})

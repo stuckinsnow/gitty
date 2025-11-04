@@ -654,15 +654,19 @@ end
 function M.browse_files_at_commit()
 	local fzf = require("fzf-lua")
 
-	-- Step 1: Select branch
+	-- Step 1: Select branch or use reflog
 	fzf.git_branches({
 		prompt = "Select branch to browse files: ",
 		fzf_opts = {
-			["--header"] = ":: Select branch to browse files at commit ::",
+			["--header"] = ":: Select branch to browse files at commit :: ENTER=branch :: CTRL-L=reflog ::",
 		},
 		actions = {
 			["ctrl-x"] = false,
 			["ctrl-a"] = false,
+			["ctrl-l"] = function(selected)
+				-- Use reflog instead of branch
+				M.select_commit_for_file_browser_reflog()
+			end,
 			["default"] = function(selected)
 				if not selected or #selected == 0 then
 					return
@@ -675,6 +679,68 @@ function M.browse_files_at_commit()
 				end
 
 				M.select_commit_for_file_browser(branch)
+			end,
+		},
+	})
+end
+
+function M.select_commit_for_file_browser_reflog()
+	local fzf = require("fzf-lua")
+
+	-- Get current branch for reflog
+	local current_branch = vim.fn.system("git branch --show-current"):gsub("%s+", "")
+	if current_branch == "" then
+		vim.notify("Failed to get current branch", vim.log.levels.ERROR)
+		return
+	end
+
+	-- Get reflog entries - shows commits that were in the branch history but may now be squashed
+	local reflog_base_cmd = string.format(
+		"git reflog %s --color=always --pretty=format:'%%C(blue)%%h%%C(reset) %%s %%C(red)%%an%%C(reset)' | head -50",
+		current_branch
+	)
+
+	-- Apply colorization for commit types (feat, fix, chore, add)
+	local reflog_cmd = reflog_base_cmd
+		.. " | sed -E 's/^(.*) (feat[^[:space:]]*)/\\1 \\x1b[33m\\2\\x1b[0m/I; s/^(.*) (fix[^[:space:]]*)/\\1 \\x1b[32m\\2\\x1b[0m/I; s/^(.*) (chore[^[:space:]]*)/\\1 \\x1b[31m\\2\\x1b[0m/I; s/^(.*) (add[^[:space:]]*)/\\1 \\x1b[35m\\2\\x1b[0m/I'"
+
+	fzf.fzf_exec(reflog_cmd, {
+		prompt = string.format("Select commit from %s reflog to browse files: ", current_branch),
+		fzf_opts = {
+			["--header"] = string.format(
+				":: Reflog for %s (includes squashed commits) :: ENTER=file picker :: CTRL-V=mini.files",
+				current_branch
+			),
+			["--preview"] = M.create_commit_preview_command(),
+		},
+		actions = {
+			["ctrl-x"] = false,
+			["ctrl-a"] = false,
+			["default"] = function(selected)
+				if not selected or #selected == 0 then
+					return
+				end
+
+				local commit = selected[1]:match("^(%w+)")
+				if not commit then
+					vim.notify("Failed to extract commit hash", vim.log.levels.ERROR)
+					return
+				end
+
+				M.show_file_picker_at_commit("reflog", commit)
+			end,
+			["ctrl-v"] = function(selected)
+				if not selected or #selected == 0 then
+					return
+				end
+
+				local commit = selected[1]:match("^(%w+)")
+				if not commit then
+					vim.notify("Failed to extract commit hash", vim.log.levels.ERROR)
+					return
+				end
+
+				M.open_mini_files_at_commit("reflog", commit)
 			end,
 		},
 	})
