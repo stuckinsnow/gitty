@@ -8,7 +8,7 @@ local minidiff_utils = require("gitty.providers.github-compare.minidiff-utils")
 local file_view_utils = require("gitty.providers.github-compare.file-view-utils")
 local blame_utils = require("gitty.providers.github-compare.blame-utils")
 local github_compare_ai = require("gitty.providers.github-compare.github-compare-ai")
-local json_compare_utils = require("gitty.providers.github-compare.json-compare-utils")
+local file_compare_utils = require("gitty.providers.github-compare.file-compare-utils")
 
 function M.git_compare_commits()
 	fzf.fzf_exec({
@@ -100,7 +100,7 @@ M.show_commit_diff = file_view_utils.show_commit_diff
 M.view_files_from_commits = file_view_utils.view_files_from_commits
 M.copy_blame_commit_hash = blame_utils.copy_blame_commit_hash_for_current_line
 
-M.compare_json_files = json_compare_utils.compare_json_files
+M.compare_json_files = file_compare_utils.compare_json_files
 
 function M.cherry_pick_file_from_branch()
 	local fzf = require("fzf-lua")
@@ -117,7 +117,9 @@ function M.cherry_pick_file_from_branch()
 	fzf.git_branches({
 		prompt = "Select branch to cherry-pick file from: ",
 		fzf_opts = {
-			["--header"] = ":: Select source branch for " .. vim.fn.fnamemodify(current_file, ":t") .. " :: ENTER=branch :: CTRL-L=reflog ::",
+			["--header"] = ":: Select source branch for "
+				.. vim.fn.fnamemodify(current_file, ":t")
+				.. " :: ENTER=branch :: CTRL-L=reflog ::",
 		},
 		actions = {
 			["ctrl-x"] = false,
