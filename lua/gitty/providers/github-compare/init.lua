@@ -8,6 +8,7 @@ local minidiff_utils = require("gitty.providers.github-compare.minidiff-utils")
 local file_view_utils = require("gitty.providers.github-compare.file-view-utils")
 local blame_utils = require("gitty.providers.github-compare.blame-utils")
 local github_compare_ai = require("gitty.providers.github-compare.github-compare-ai")
+local json_compare_utils = require("gitty.providers.github-compare.json-compare-utils")
 
 function M.git_compare_commits()
 	fzf.fzf_exec({
@@ -98,6 +99,8 @@ M.find_file_history = file_view_utils.find_file_history
 M.show_commit_diff = file_view_utils.show_commit_diff
 M.view_files_from_commits = file_view_utils.view_files_from_commits
 M.copy_blame_commit_hash = blame_utils.copy_blame_commit_hash_for_current_line
+
+M.compare_json_files = json_compare_utils.compare_json_files
 
 function M.cherry_pick_file_from_branch()
 	local fzf = require("fzf-lua")
@@ -384,6 +387,7 @@ function M.setup()
 	vim.keymap.set("n", "<leader>g2", M.git_compare_commits, { desc = "Git Compare" })
 	vim.keymap.set("n", "<leader>g3", M.compare_with_minidiff, { desc = "Git Mini Diff" })
 	vim.keymap.set("v", "<leader>g3", M.compare_selected_with_minidiff, { desc = "Git Mini Diff Selection" })
+	vim.keymap.set("n", "<leader>c0j", M.compare_json_files, { desc = "Compare JSON Files" })
 end
 
 return M
