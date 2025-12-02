@@ -119,11 +119,7 @@ function M.compare_by_picker()
 				vim.schedule(function()
 					local n = 50
 					local function get_commits(branch, label)
-						local cmd = string.format(
-							"git log --color=always --pretty=format:'%%h|%%ct|%%C(blue)%%h%%C(reset) %%C(green)%%ad%%C(reset) %%s %%C(red)%%an%%C(reset)' --date=format:'%%d/%%m/%%Y' %s -n %d",
-							branch,
-							n
-						)
+						local cmd = picker_utils.create_themed_git_log_with_timestamp_cmd(branch, n)
 						local handle = io.popen(cmd)
 						local commits = {}
 						if handle then
@@ -246,13 +242,7 @@ function M.compare_with_minidiff()
 				end
 
 				-- Step 2: Select commit from the chosen branch with proper date formatting
-				-- Use fzf_exec instead of git_commits to get full control over preview
-				local git_log_cmd = picker_utils.create_colorized_git_log_cmd(
-					string.format(
-						"git log --color=always --pretty=format:'%%C(blue)%%h%%C(reset) %%C(green)%%ad%%C(reset) %%s %%C(red)%%an%%C(reset)' --date=format:'%%d/%%m/%%Y' %s -n 50",
-						branch
-					)
-				)
+				local git_log_cmd = picker_utils.create_themed_git_log_cmd(branch, 50)
 
 				fzf.fzf_exec(git_log_cmd, {
 					prompt = string.format("Select commit from %s for inline diff: ", branch),
@@ -316,10 +306,7 @@ function M.compare_selected_with_minidiff()
 		start_line, end_line = end_line, start_line
 	end
 
-	-- Use fzf_exec instead of git_commits to get full control over preview
-	local git_log_cmd = picker_utils.create_colorized_git_log_cmd(
-		"git log --color=always --pretty=format:'%C(blue)%h%C(reset) %C(green)%ad%C(reset) %s %C(red)%an%C(reset)' --date=format:'%d/%m/%Y' -n 50"
-	)
+	local git_log_cmd = picker_utils.create_themed_git_log_cmd(nil, 50)
 
 	fzf.fzf_exec(git_log_cmd, {
 		prompt = "Select commit for selected text diff: ",
@@ -359,11 +346,7 @@ function M.compare_from_current_branch()
 		return
 	end
 
-	-- Use fzf_exec instead of git_commits to get full control over preview
-	local git_log_cmd = string.format(
-		"git log --color=always --pretty=format:'%%C(blue)%%h%%C(reset) %%C(green)%%ad%%C(reset) %%s %%C(red)%%an%%C(reset)' --date=format:'%%d/%%m/%%Y' %s -n 50",
-		current_branch
-	)
+	local git_log_cmd = picker_utils.create_themed_git_log_cmd(current_branch, 50)
 
 	fzf.fzf_exec(git_log_cmd, {
 		prompt = string.format("Select two commits from %s: ", current_branch),

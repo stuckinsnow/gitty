@@ -46,10 +46,7 @@ end
 function M.view_file_at_commit_picker()
 	local fzf = require("fzf-lua")
 
-	-- Use fzf_exec instead of git_commits to get full control over preview
-	local git_log_cmd = M.create_colorized_git_log_cmd(
-		"git log --color=always --pretty=format:'%C(blue)%h%C(reset) %C(green)%ad%C(reset) %s %C(red)%an%C(reset)' --date=format:'%d/%m/%Y' -n 100"
-	)
+	local git_log_cmd = M.create_themed_git_log_cmd(nil, 100)
 
 	fzf.fzf_exec(git_log_cmd, {
 		prompt = "Select commit to view file: ",
@@ -108,13 +105,7 @@ end
 function M.pick_commit_from_branch(commit1, branch)
 	local fzf = require("fzf-lua")
 
-	-- Use fzf_exec instead of git_commits to get full control over preview
-	local git_log_cmd = M.create_colorized_git_log_cmd(
-		string.format(
-			"git log --color=always --pretty=format:'%%C(blue)%%h%%C(reset) %%C(green)%%ad%%C(reset) %%s %%C(red)%%an%%C(reset)' --date=format:'%%d/%%m/%%Y' %s -n 50",
-			branch
-		)
-	)
+	local git_log_cmd = M.create_themed_git_log_cmd(branch, 50)
 
 	fzf.fzf_exec(git_log_cmd, {
 		prompt = string.format("Select commit from %s: ", branch),
@@ -146,8 +137,60 @@ function M.pick_commit_from_branch(commit1, branch)
 end
 
 function M.create_colorized_git_log_cmd(base_cmd)
-	return base_cmd
-		.. " | sed -E 's/^(.*) (feat[^[:space:]]*)/\\1 \\x1b[33m\\2\\x1b[0m/I; s/^(.*) (fix[^[:space:]]*)/\\1 \\x1b[32m\\2\\x1b[0m/I; s/^(.*) (chore[^[:space:]]*)/\\1 \\x1b[31m\\2\\x1b[0m/I; s/^(.*) (add[^[:space:]]*)/\\1 \\x1b[35m\\2\\x1b[0m/I'"
+	return base_cmd .. config.get_commit_type_sed_pattern()
+end
+
+-- Create fully colorized git log command with themed hash, date, author, and commit types
+-- @param branch string|nil - branch name or nil for current branch
+-- @param limit number|nil - number of commits to show (default 50)
+-- @param extra_args string|nil - extra git log arguments (e.g., "--follow filename")
+function M.create_themed_git_log_cmd(branch, limit, extra_args)
+	limit = limit or 50
+	local branch_arg = branch and (" " .. branch) or ""
+	local extra = extra_args and (" " .. extra_args) or ""
+
+	return string.format(
+		"git log --pretty=format:'%s' --date=format:'%%d/%%m/%%Y'%s -n %d%s%s",
+		config.get_git_log_format(),
+		branch_arg,
+		limit,
+		extra,
+		config.get_full_color_sed_pattern()
+	)
+end
+
+-- Create fully colorized git reflog command
+function M.create_themed_reflog_cmd(branch, limit)
+	limit = limit or 50
+	return string.format(
+		"git reflog %s --pretty=format:'%s' | head -%d%s",
+		branch,
+		config.get_git_reflog_format(),
+		limit,
+		config.get_reflog_color_sed_pattern()
+	)
+end
+
+-- Create themed git log command for file history (with --follow and full hash)
+function M.create_themed_file_history_cmd(file_path)
+	return string.format(
+		"git log --no-abbrev-commit --pretty=format:'%s' --date=format:'%%d/%%m/%%Y' --follow %s%s",
+		config.get_git_log_format(),
+		vim.fn.shellescape(file_path),
+		config.get_full_color_sed_pattern()
+	)
+end
+
+-- Create themed git log command with timestamp for sorting (returns hash|ts|display format)
+function M.create_themed_git_log_with_timestamp_cmd(branch, limit)
+	limit = limit or 50
+	return string.format(
+		"git log --pretty=format:'%s' --date=format:'%%d/%%m/%%Y' %s -n %d%s",
+		config.get_git_log_format_with_timestamp(),
+		branch,
+		limit,
+		config.get_timestamp_color_sed_pattern()
+	)
 end
 
 function M.fzf_last_commit_files()
@@ -160,12 +203,7 @@ function M.fzf_last_commit_files()
 	end
 
 	-- Step 1: Select commit hash first
-	-- Use fzf_exec instead of git_commits to get full control over preview
-	local git_log_cmd = M.create_colorized_git_log_cmd(
-		string.format(
-			"git log --color=always --pretty=format:'%%C(blue)%%h%%C(reset) %%C(green)%%ad%%C(reset) %%s %%C(red)%%an%%C(reset)' --date=format:'%%d/%%m/%%Y' %s -n 50",
-			current_branch
-		)
+	local git_log_cmd = M.create_themed_git_log_cmd(current_branch, 50
 	)
 
 	fzf.fzf_exec(git_log_cmd, {
@@ -245,11 +283,12 @@ function M.show_files_from_multiple_commits(commits)
 	end
 
 	-- Convert to list and add commit info
+	local ansi = config.get_ansi_codes()
 	local files_list = {}
 	for file, _ in pairs(all_files) do
 		local colored_commits = {}
 		for _, commit in ipairs(file_commit_map[file]) do
-			table.insert(colored_commits, string.format("\x1b[35m%s\x1b[0m", commit))
+			table.insert(colored_commits, string.format("%s%s%s", ansi.hash, commit, ansi.reset))
 		end
 		local commit_info = table.concat(colored_commits, ",")
 		table.insert(files_list, string.format("%s [%s]", file, commit_info))
@@ -532,14 +571,7 @@ end
 function M.select_commit_from_branch_for_new_tab(branch)
 	local fzf = require("fzf-lua")
 
-	-- Step 2: Select commit from the chosen branch
-	-- Use fzf_exec instead of git_commits to get full control over preview
-	local git_log_cmd = M.create_colorized_git_log_cmd(
-		string.format(
-			"git log --color=always --pretty=format:'%%C(blue)%%h%%C(reset) %%C(green)%%ad%%C(reset) %%s %%C(red)%%an%%C(reset)' --date=format:'%%d/%%m/%%Y' %s -n 50",
-			branch
-		)
-	)
+	local git_log_cmd = M.create_themed_git_log_cmd(branch, 50)
 
 	fzf.fzf_exec(git_log_cmd, {
 		prompt = string.format("Select commit from %s: ", branch),
@@ -695,14 +727,7 @@ function M.select_commit_for_file_browser_reflog()
 	end
 
 	-- Get reflog entries - shows commits that were in the branch history but may now be squashed
-	local reflog_base_cmd = string.format(
-		"git reflog %s --color=always --pretty=format:'%%C(blue)%%h%%C(reset) %%s %%C(red)%%an%%C(reset)' | head -50",
-		current_branch
-	)
-
-	-- Apply colorization for commit types (feat, fix, chore, add)
-	local reflog_cmd = reflog_base_cmd
-		.. " | sed -E 's/^(.*) (feat[^[:space:]]*)/\\1 \\x1b[33m\\2\\x1b[0m/I; s/^(.*) (fix[^[:space:]]*)/\\1 \\x1b[32m\\2\\x1b[0m/I; s/^(.*) (chore[^[:space:]]*)/\\1 \\x1b[31m\\2\\x1b[0m/I; s/^(.*) (add[^[:space:]]*)/\\1 \\x1b[35m\\2\\x1b[0m/I'"
+	local reflog_cmd = M.create_themed_reflog_cmd(current_branch, 50)
 
 	fzf.fzf_exec(reflog_cmd, {
 		prompt = string.format("Select commit from %s reflog to browse files: ", current_branch),
@@ -749,13 +774,7 @@ end
 function M.select_commit_for_file_browser(branch)
 	local fzf = require("fzf-lua")
 
-	-- Step 2: Select commit from the chosen branch
-	local git_log_cmd = M.create_colorized_git_log_cmd(
-		string.format(
-			"git log --color=always --pretty=format:'%%C(blue)%%h%%C(reset) %%C(green)%%ad%%C(reset) %%s %%C(red)%%an%%C(reset)' --date=format:'%%d/%%m/%%Y' %s -n 50",
-			branch
-		)
-	)
+	local git_log_cmd = M.create_themed_git_log_cmd(branch, 50)
 
 	fzf.fzf_exec(git_log_cmd, {
 		prompt = string.format("Select commit from %s to browse files: ", branch),

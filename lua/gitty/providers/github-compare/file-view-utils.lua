@@ -192,16 +192,10 @@ function M.find_file_history()
 	end
 
 	local fzf = require("fzf-lua")
+	local picker_utils = require("gitty.providers.github-compare.picker-utils")
 	local relative_path = vim.fn.fnamemodify(file_path, ":~:.")
 
-	-- Use git log directly instead of through picker-utils
-	local base_cmd = string.format(
-		"git log --color=always --no-abbrev-commit --pretty=format:'%%C(blue)%%h%%C(reset) %%C(green)%%ad%%C(reset) %%s %%C(red)%%an%%C(reset)' --date=format:'%%d/%%m/%%Y' --follow %s",
-		vim.fn.shellescape(relative_path)
-	)
-
-	local cmd = base_cmd
-		.. " | sed -E 's/^(.*) (feat[^[:space:]]*)/\\1 \\x1b[33m\\2\\x1b[0m/I; s/^(.*) (fix[^[:space:]]*)/\\1 \\x1b[32m\\2\\x1b[0m/I; s/^(.*) (chore[^[:space:]]*)/\\1 \\x1b[31m\\2\\x1b[0m/I; s/^(.*) (add[^[:space:]]*)/\\1 \\x1b[35m\\2\\x1b[0m/I'"
+	local cmd = picker_utils.create_themed_file_history_cmd(relative_path)
 
 	-- Use fzf_exec instead of git_commits to get full control over preview
 	fzf.fzf_exec(cmd, {
