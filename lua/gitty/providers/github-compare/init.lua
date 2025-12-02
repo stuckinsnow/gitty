@@ -154,14 +154,7 @@ function M.select_commit_from_reflog_for_cherry_pick(relative_path, current_file
 	end
 
 	-- Get reflog entries - shows commits that were in the branch history but may now be squashed
-	local reflog_base_cmd = string.format(
-		"git reflog %s --color=always --pretty=format:'%%C(blue)%%h%%C(reset) %%s %%C(red)%%an%%C(reset)' | head -50",
-		current_branch
-	)
-
-	-- Apply colorization for commit types (feat, fix, chore, add)
-	local reflog_cmd = reflog_base_cmd
-		.. " | sed -E 's/^(.*) (feat[^[:space:]]*)/\\1 \\x1b[33m\\2\\x1b[0m/I; s/^(.*) (fix[^[:space:]]*)/\\1 \\x1b[32m\\2\\x1b[0m/I; s/^(.*) (chore[^[:space:]]*)/\\1 \\x1b[31m\\2\\x1b[0m/I; s/^(.*) (add[^[:space:]]*)/\\1 \\x1b[35m\\2\\x1b[0m/I'"
+	local reflog_cmd = picker_utils.create_themed_reflog_cmd(current_branch, 50)
 
 	fzf.fzf_exec(reflog_cmd, {
 		prompt = string.format("Select commit from %s reflog: ", current_branch),
@@ -197,14 +190,7 @@ end
 function M.select_commit_from_branch_for_cherry_pick(branch, relative_path, current_file)
 	local fzf = require("fzf-lua")
 
-	-- Step 2: Select commit from the chosen branch
-	-- Use fzf_exec instead of git_commits to get full control over preview
-	local git_log_cmd = picker_utils.create_colorized_git_log_cmd(
-		string.format(
-			"git log --color=always --pretty=format:'%%C(blue)%%h%%C(reset) %%C(green)%%ad%%C(reset) %%s %%C(red)%%an%%C(reset)' --date=format:'%%d/%%m/%%Y' %s -n 50",
-			branch
-		)
-	)
+	local git_log_cmd = picker_utils.create_themed_git_log_cmd(branch, 50)
 
 	fzf.fzf_exec(git_log_cmd, {
 		prompt = string.format("Select commit from %s: ", branch),
