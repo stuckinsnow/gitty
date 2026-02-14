@@ -18,14 +18,6 @@ function M.git_compare_commits()
 		"4. Compare hash with current file",
 		"5. Mini Diff (inline)",
 		"6. View file at commit - Split",
-		"7. Find when file changed",
-		"8. Copy blame commit hash",
-		"9. Diff Analyse - AI",
-		"10. Cherry-pick file from different branch",
-		"11. Open files from commit",
-		"12. Browse files at commit",
-		"13. Open files from previous commits",
-		"14. AI Commit",
 	}, {
 		prompt = "Git Compare> ",
 		winopts = {
@@ -49,24 +41,74 @@ function M.git_compare_commits()
 					M.compare_with_minidiff()
 				elseif choice:match("View file at commit") then
 					M.view_file_at_commit_picker()
-				elseif choice:match("Find when file changed") then
+				elseif choice:match("Compare commits from different branches") then
+					M.compare_by_picker()
+				end
+			end,
+		},
+	})
+end
+
+function M.git_file_history()
+	fzf.fzf_exec({
+		"1. Find when file changed",
+		"2. Copy blame commit hash",
+		"3. Cherry-pick file from different branch",
+		"4. Open files from commit",
+		"5. Browse files at commit",
+		"6. Open files from previous commits",
+	}, {
+		prompt = "File History> ",
+		winopts = {
+			width = 0.6,
+			height = 0.4,
+		},
+		actions = {
+			["default"] = function(selected)
+				local choice = selected[1]
+				if not choice then
+					return
+				end
+
+				if choice:match("Find when file changed") then
 					M.find_file_history()
 				elseif choice:match("Copy blame commit hash") then
 					M.copy_blame_commit_hash()
-				elseif choice:match("Diff Analyse") then
-					github_compare_ai.fzf_github_analyse_ai()
 				elseif choice:match("Cherry%-pick file from different branch") then
 					M.cherry_pick_file_from_branch()
-				elseif choice:match("11%. Open files from commit") then
+				elseif choice:match("Open files from commit") then
 					picker_utils.open_files_from_branch_commit_in_new_tab()
-				elseif choice:match("12%. Browse files at commit") then
+				elseif choice:match("Browse files at commit") then
 					picker_utils.browse_files_at_commit()
 				elseif choice:match("Open files from previous commits") then
 					M.fzf_last_commit_files()
-				elseif choice:match("Compare commits from different branches") then
-					M.compare_by_picker()
-				elseif choice:match("AI Commit") then
+				end
+			end,
+		},
+	})
+end
+
+function M.git_ai_tools()
+	fzf.fzf_exec({
+		"1. AI Commit",
+		"2. Diff Analyse - AI",
+	}, {
+		prompt = "AI Tools> ",
+		winopts = {
+			width = 0.6,
+			height = 0.3,
+		},
+		actions = {
+			["default"] = function(selected)
+				local choice = selected[1]
+				if not choice then
+					return
+				end
+
+				if choice:match("AI Commit") then
 					require("gitty.providers.github-commit").commit()
+				elseif choice:match("Diff Analyse") then
+					github_compare_ai.fzf_github_analyse_ai()
 				end
 			end,
 		},
@@ -375,9 +417,6 @@ function M.close_cherry_pick_view(branch_buf, branch_win, current_win)
 end
 
 function M.setup()
-	vim.keymap.set("n", "<leader>g2", M.git_compare_commits, { desc = "Git Compare" })
-	vim.keymap.set("n", "<leader>g3", M.compare_with_minidiff, { desc = "Git Mini Diff" })
-	vim.keymap.set("v", "<leader>g3", M.compare_selected_with_minidiff, { desc = "Git Mini Diff Selection" })
 	vim.keymap.set("n", "<leader>c0j", M.compare_json_files, { desc = "Compare JSON Files" })
 end
 

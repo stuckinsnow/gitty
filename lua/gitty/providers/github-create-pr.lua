@@ -54,7 +54,7 @@ function M.create_new_pr()
 							end
 
 							-- Always create the PR window first
-							local win = M.create_pr_window(current_branch, target_branch, title)
+							local win, buf = M.create_pr_window(current_branch, target_branch, title)
 
 							if desc_type == "AI-generated" then
 								-- Generate PR description via opencode

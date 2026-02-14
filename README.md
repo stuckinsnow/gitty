@@ -113,6 +113,8 @@ require("gitty").setup({
 | `<leader>g2` | n    | Git Compare (commits, branches, etc.)  |
 | `<leader>g3` | n    | Mini Diff (inline diff with commit)    |
 | `<leader>g3` | v    | Mini Diff (diff selection with commit) |
+| `<leader>g4` | n    | File History & Browse                  |
+| `<leader>g6` | n    | AI Tools (commit, analyse)             |
 
 **In PR/Issue/Commit/Branch pickers:**
 
@@ -146,9 +148,19 @@ require("gitty").setup({
 - `<CR>`: Copy commit hash to clipboard
 - `<C-v>`: View file at that commit
 
-You can also add these to your configuration:
+Suggested keymaps for your configuration:
 
-```
+```lua
+local compare = require("gitty.providers.github-compare.init")
+
+-- Menus
+vim.keymap.set("n", "<leader>g2", compare.git_compare_commits, { desc = "Git Compare" })
+vim.keymap.set("n", "<leader>g3", compare.compare_with_minidiff, { desc = "Git Mini Diff" })
+vim.keymap.set("v", "<leader>g3", compare.compare_selected_with_minidiff, { desc = "Git Mini Diff Selection" })
+vim.keymap.set("n", "<leader>g4", compare.git_file_history, { desc = "Git File History" })
+vim.keymap.set("n", "<leader>g6", compare.git_ai_tools, { desc = "Git AI Tools" })
+
+-- GitHub
 vim.keymap.set("n", "<leader>g1n", "<cmd>FzfGithubNotifications<CR>", { desc = "GitHub Notifications" })
 vim.keymap.set("n", "<leader>g1p", "<cmd>FzfGithubPrs<CR>", { desc = "GitHub PRs" })
 vim.keymap.set("n", "<leader>g1w", "<cmd>FzfGithubWorkflows<CR>", { desc = "Github Workflows" })
@@ -300,6 +312,8 @@ You will need to set up the following highlights in your Neovim configuration to
 
 Gitty uses [opencode](https://github.com/opencode-ai/opencode) with `github-copilot/gpt-4.1` for:
 
-- **`:GittyCommit`** — Generate commit messages from staged changes
-- **AI PR descriptions** — Auto-generate PR descriptions when creating PRs
-- **Commit analysis** — Analyze diffs between commits for bugs/regressions
+- **AI Commit** (`<leader>g6`) — Generate commit messages from staged changes
+- **Diff Analyse** (`<leader>g6`) — Analyze diffs between commits for bugs/regressions
+- **AI PR descriptions** (`<leader>g1C`) — Auto-generate PR descriptions when creating PRs
+
+Requires `opencode` installed with Copilot configured.
