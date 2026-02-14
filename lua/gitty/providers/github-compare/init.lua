@@ -417,7 +417,6 @@ function M.close_cherry_pick_view(branch_buf, branch_win, current_win)
 end
 
 function M.setup()
-	vim.keymap.set("n", "<leader>c0j", M.compare_json_files, { desc = "Compare JSON Files" })
 end
 
 return M

@@ -168,6 +168,9 @@ vim.keymap.set("n", "<leader>g1i", "<cmd>FzfGithubIssues<CR>", { desc = "GitHub 
 vim.keymap.set("n", "<leader>g1c", "<cmd>FzfCreateIssue<CR>", { desc = "Create GitHub Issue" })
 vim.keymap.set("n", "<leader>g1C", "<cmd>FzfCreatePr<CR>", { desc = "Create GitHub PR" })
 vim.keymap.set("n", "<leader>g1B", "<cmd>FzfGithubBranches<CR>", { desc = "List Branch Information" })
+
+-- Utils
+vim.keymap.set("n", "<leader>c0j", compare.compare_json_files, { desc = "Compare JSON Files" })
 ```
 
 ---
