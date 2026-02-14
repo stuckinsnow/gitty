@@ -56,7 +56,7 @@ https://github.com/user-attachments/assets/d6e57846-59a2-4038-8ad0-8c97ad6f5274
 },
 ```
 
-For AI assistance to work, you will need to create a new prompt in codecompanion, you can find that at the bottom of this README.
+For AI features (commit messages, PR descriptions, commit analysis), you need [opencode](https://github.com/opencode-ai/opencode) installed with Copilot configured.
 
 ---
 
@@ -172,6 +172,7 @@ vim.keymap.set("n", "<leader>g1B", "<cmd>FzfGithubBranches<CR>", { desc = "List 
 | `:FzfCreatePr`            | Create a new Pull Request                |
 | `:FzfCreateIssue`         | Create a new Issue                       |
 | `:GittySetup`             | (Re)initialize gitty                     |
+| `:GittyCommit`            | AI-generated commit message              |
 
 ---
 
@@ -295,66 +296,10 @@ You will need to set up the following highlights in your Neovim configuration to
 
 ---
 
-### 🤖 CODECOMPANION
+### 🤖 AI Features
 
-```
-      ["PR Description"] = {
-        strategy = "inline",
-        description = "Generate a professional PR description from recent commits",
-        opts = {
-          short_name = "pr",
-        },
-        prompts = {
-          {
-            role = "system",
-            content = "You are a senior developer with years of experience. Create professional, concise pull request descriptions that clearly explain what the PR does, and key changes made, list what an experienced developer would mention but do not try impress anyone. The point is to convey information. Format responses as markdown.",
-          },
-          {
-            role = "user",
-            content = function()
-              -- Get current branch
-              local current_branch = vim.fn.system("git rev-parse --abbrev-ref HEAD"):gsub("%s+", "")
+Gitty uses [opencode](https://github.com/opencode-ai/opencode) with `github-copilot/gpt-4.1` for:
 
-              -- Get recent commits with full details
-              local commit_details = vim.fn.system("git log --oneline -n 10 --no-merges"):gsub("\r", "")
-
-              -- Get diff summary
-              local diff_summary = vim.fn.system("git diff --stat HEAD~5..HEAD"):gsub("\r", "")
-
-              -- Get list of changed files
-              local changed_files = vim.fn.system("git diff --name-only HEAD~5..HEAD"):gsub("\r", "")
-
-              return string.format(
-                [[
-Please create a professional PR description based on the following information:
-
-**Current Branch:** %s
-
-**Recent Commits:**
-%s
-
-**Files Changed:**
-%s
-
-**Diff Summary:**
-%s
-
-Please generate a well-structured PR description that includes:
-- A brief summary of what this PR does
-- Key changes made
-- Any notable implementation details
-- Keep it concise but informative
-
-Format the response as markdown.
-]],
-                current_branch,
-                commit_details,
-                changed_files,
-                diff_summary
-              )
-            end,
-          },
-        },
-      },
-
-```
+- **`:GittyCommit`** — Generate commit messages from staged changes
+- **AI PR descriptions** — Auto-generate PR descriptions when creating PRs
+- **Commit analysis** — Analyze diffs between commits for bugs/regressions

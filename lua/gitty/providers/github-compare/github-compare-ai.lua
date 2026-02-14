@@ -1,5 +1,7 @@
 local M = {}
 
+local ai = require("gitty.utilities.ai")
+
 function M.fzf_github_analyse_ai()
 	local fzf = require("fzf-lua")
 	local picker_utils = require("gitty.providers.github-compare.picker-utils")
@@ -18,7 +20,7 @@ function M.fzf_github_analyse_ai()
 				if not selected or #selected == 0 then
 					return
 				end
-				require("gitty.providers.github-compare.picker-utils").copy_commit_hash(selected)
+				picker_utils.copy_commit_hash(selected)
 			end,
 			["default"] = function(selected)
 				if not selected or #selected == 0 then
@@ -43,20 +45,35 @@ function M.fzf_github_analyse_ai()
 					return
 				end
 
+				local diff_cmd
 				if #commits == 1 then
-					-- Compare selected commit with working tree (staged + unstaged changes)
-					vim.g.codecompanion_input = commits[1]
-					vim.cmd("CodeCompanion /compare_two")
-					vim.notify(
-						"Comparing " .. commits[1] .. " with working tree (staged + unstaged changes)",
-						vim.log.levels.INFO
-					)
+					diff_cmd = string.format("git diff %s | head -n 300", commits[1])
+					vim.notify("Comparing " .. commits[1] .. " with working tree...", vim.log.levels.INFO)
 				else
-					-- Two commits: compare between them
-					vim.g.codecompanion_input = commits[1] .. " " .. commits[2]
-					vim.cmd("CodeCompanion /compare_two")
-					vim.notify("Comparing commits: " .. commits[1] .. " " .. commits[2], vim.log.levels.INFO)
+					diff_cmd = string.format("git diff %s %s | head -n 300", commits[1], commits[2])
+					vim.notify("Comparing " .. commits[1] .. " " .. commits[2] .. "...", vim.log.levels.INFO)
 				end
+
+				local diff = vim.fn.system(diff_cmd):gsub("\r", "")
+				local prompt = string.format(
+					"Analyze this git diff. Identify bugs, regressions, or risky changes:\n\n```diff\n%s\n```",
+					diff
+				)
+
+				ai.run(prompt, function(result, err)
+					if err then
+						vim.notify("AI analysis failed: " .. err, vim.log.levels.ERROR)
+						return
+					end
+					-- Show in a scratch buffer
+					local buf = vim.api.nvim_create_buf(false, true)
+					local lines = vim.split(result, "\n")
+					vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+					vim.bo[buf].filetype = "markdown"
+					vim.bo[buf].bufhidden = "wipe"
+					vim.cmd("vsplit")
+					vim.api.nvim_win_set_buf(0, buf)
+				end)
 			end,
 		},
 	})

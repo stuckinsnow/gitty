@@ -25,6 +25,7 @@ function M.git_compare_commits()
 		"11. Open files from commit",
 		"12. Browse files at commit",
 		"13. Open files from previous commits",
+		"14. AI Commit",
 	}, {
 		prompt = "Git Compare> ",
 		winopts = {
@@ -64,6 +65,8 @@ function M.git_compare_commits()
 					M.fzf_last_commit_files()
 				elseif choice:match("Compare commits from different branches") then
 					M.compare_by_picker()
+				elseif choice:match("AI Commit") then
+					require("gitty.providers.github-commit").commit()
 				end
 			end,
 		},

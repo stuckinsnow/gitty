@@ -19,6 +19,7 @@ function M.setup(opts)
 	require("gitty.providers.github-create-issue").setup()
 	require("gitty.providers.github-get-log").setup()
 	require("gitty.providers.github-compare.init").setup()
+	require("gitty.providers.github-commit").setup()
 end
 
 -- Direct access functions
@@ -52,6 +53,10 @@ end
 
 M.compare = function()
 	require("gitty.providers.github-compare.init").git_compare_commits()
+end
+
+M.commit = function()
+	require("gitty.providers.github-commit").commit()
 end
 
 function M.check_dependencies()

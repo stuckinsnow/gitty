@@ -57,13 +57,26 @@ function M.create_new_pr()
 							local win = M.create_pr_window(current_branch, target_branch, title)
 
 							if desc_type == "AI-generated" then
-								-- Position cursor in description area and run CodeCompanion
-								vim.defer_fn(function()
-									vim.api.nvim_win_set_cursor(win, { 13, 0 }) -- Line with "Write your PR description here"
-									vim.cmd("normal! V") -- Select the line
-									vim.notify("Generating AI description...", vim.log.levels.INFO)
-									vim.cmd("CodeCompanion /pr")
-								end, 100)
+								-- Generate PR description via opencode
+								vim.notify("Generating AI description...", vim.log.levels.INFO)
+								local diff_summary = vim.fn.system("git diff --stat HEAD~5..HEAD"):gsub("\r", "")
+								local commit_msgs = vim.fn.system("git log --oneline -n 10 --no-merges"):gsub("\r", "")
+								local prompt = string.format(
+									"Generate a concise PR description (markdown) for branch %s -> %s.\n\nRecent commits:\n%s\n\nDiff summary:\n%s",
+									current_branch, target_branch, commit_msgs, diff_summary
+								)
+								local ai = require("gitty.utilities.ai")
+								ai.run(prompt, function(result, err)
+									if err then
+										vim.notify("AI description failed: " .. err, vim.log.levels.ERROR)
+										return
+									end
+									if vim.api.nvim_buf_is_valid(buf) then
+										-- Find line 13 (description area) and replace
+										local lines = vim.split(result, "\n")
+										vim.api.nvim_buf_set_lines(buf, 13, 14, false, lines)
+									end
+								end)
 							end
 						end
 					}
