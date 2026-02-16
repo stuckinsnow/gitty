@@ -4,13 +4,14 @@ local ai = require("gitty.utilities.ai")
 
 function M.commit()
   vim.fn.system("git add .")
-  local diff = vim.fn.system("git diff --cached"):gsub("\r", "")
+  local exclude = ":(exclude)**/pnpm-lock.yaml (exclude)**/package-lock.json (exclude)**/yarn.lock"
+  local diff = vim.fn.system("git diff --cached -- . " .. exclude):gsub("\r", "")
   if diff == "" then
     vim.notify("Nothing staged to commit", vim.log.levels.WARN)
     return
   end
 
-  local diff_stat = vim.fn.system("git diff --cached --stat"):gsub("\r", "")
+  local diff_stat = vim.fn.system("git diff --cached --stat -- . " .. exclude):gsub("\r", "")
   local recent = vim.fn.system("git log --oneline -n 5 --no-merges"):gsub("\r", "")
 
   local prompt = string.format([[Generate a git commit message for these changes. Rules:
