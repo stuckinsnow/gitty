@@ -4,7 +4,7 @@ local ai = require("gitty.utilities.ai")
 
 function M.commit()
   vim.fn.system("git add .")
-  local exclude = ":(exclude)**/pnpm-lock.yaml (exclude)**/package-lock.json (exclude)**/yarn.lock"
+  local exclude = "':(exclude)**/pnpm-lock.yaml' ':(exclude)**/package-lock.json' ':(exclude)**/yarn.lock'"
   local diff = vim.fn.system("git diff --cached -- . " .. exclude):gsub("\r", "")
   if diff == "" then
     vim.notify("Nothing staged to commit", vim.log.levels.WARN)
@@ -14,13 +14,19 @@ function M.commit()
   local diff_stat = vim.fn.system("git diff --cached --stat -- . " .. exclude):gsub("\r", "")
   local recent = vim.fn.system("git log --oneline -n 5 --no-merges"):gsub("\r", "")
 
-  local prompt = string.format([[Generate a git commit message for these changes. Rules:
-- Imperative form, conventional commit format
-- No parentheses after type (e.g. "feat:" not "feat(x):")
-- Single title line + bullet points for key changes
-- Be concise, no fluff
+  local prompt = string.format([[Write a commit message for the code changes in the diff below.
 
-Recent commits for style reference:
+CRITICAL: Focus ONLY on what the code changes DO functionally. Do NOT mention:
+- File exclusions, lock files, or glob patterns
+- The commit message format itself
+- Tooling, shell, or build system details unless that IS the change
+
+Format:
+- Conventional commit: type: Short description (capitalize first word after colon)
+- Optional bullet points for key changes
+- Imperative form, concise
+
+Style reference (match this tone):
 %s
 
 Diff summary:
@@ -29,7 +35,7 @@ Diff summary:
 Full diff:
 %s
 
-Reply with ONLY the commit message, nothing else.]], recent, diff_stat, diff)
+Reply with ONLY the commit message.]], recent, diff_stat, diff)
 
   ai.run(prompt, function(result, err)
     if err then
