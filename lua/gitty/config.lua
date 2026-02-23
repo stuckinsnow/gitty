@@ -1,35 +1,16 @@
 local M = {}
 
+-- Extract fg hex from a highlight group, with fallback
+local function hl_fg(name, fallback)
+	local ok, hl = pcall(vim.api.nvim_get_hl, 0, { name = name, link = false })
+	if ok and hl.fg then
+		return string.format("#%06x", hl.fg)
+	end
+	return fallback
+end
+
 -- Theme color presets for commit highlighting in fzf
-M.theme_presets = {
-	tokyonight = {
-		hash = "#7aa2f7", -- blue
-		date = "#9ece6a", -- green
-		author = "#f7768e", -- red
-		feat = "#e0af68", -- yellow
-		fix = "#9ece6a", -- green
-		chore = "#f7768e", -- red
-		add = "#bb9af7", -- purple
-	},
-	catppuccin = {
-		hash = "#89b4fa", -- blue
-		date = "#a6e3a1", -- green
-		author = "#f38ba8", -- red
-		feat = "#f9e2af", -- yellow
-		fix = "#a6e3a1", -- green
-		chore = "#f38ba8", -- red
-		add = "#cba6f7", -- mauve
-	},
-	monokai = {
-		hash = "#7493d6", -- accent5 blue
-		date = "#b3ca8c", -- accent4 green
-		author = "#d67e9c", -- accent1 red/pink
-		feat = "#d6cd8e", -- accent3 yellow
-		fix = "#b3ca8c", -- accent4 green
-		chore = "#d67e9c", -- accent1 red/pink
-		add = "#ae90d7", -- accent6 purple
-	},
-}
+M.theme_presets = {}
 
 local defaults = {
 	-- Add any configuration options here
@@ -42,8 +23,7 @@ local defaults = {
 	show_commit_files_in_preview = true, -- Show files changed in commit preview
 	enhanced_commit_preview = true, -- Use enhanced styling (delta + line numbers) in commit preview
 	-- Theme for commit type colors (feat, fix, chore, add)
-	-- Options: "tokyonight", "catppuccin", "monokai", or a custom table with {feat, fix, chore, add} hex colors
-	commit_type_theme = "catppuccin",
+	-- Colors are read from Gitty* highlight groups (GittyHash, GittyDate, GittyAuthor, GittyFeat, GittyFix, GittyChore, GittyAdd)
 }
 
 M.options = {}
@@ -68,15 +48,17 @@ local function hex_to_ansi_raw(hex)
 	return string.format("\x1b[38;2;%d;%d;%dm", r, g, b)
 end
 
--- Get the current theme colors (resolves preset name or custom table)
+-- Get the current theme colors from Gitty* highlight groups
 function M.get_commit_type_colors()
-	local theme = M.options.commit_type_theme or defaults.commit_type_theme
-	if type(theme) == "string" then
-		return M.theme_presets[theme] or M.theme_presets.catppuccin
-	elseif type(theme) == "table" then
-		return theme
-	end
-	return M.theme_presets.catppuccin
+	return {
+		hash = hl_fg("GittyHash", "#7493d6"),
+		date = hl_fg("GittyDate", "#b3ca8c"),
+		author = hl_fg("GittyAuthor", "#d67e9c"),
+		feat = hl_fg("GittyFeat", "#d6cd8e"),
+		fix = hl_fg("GittyFix", "#b3ca8c"),
+		chore = hl_fg("GittyChore", "#d67e9c"),
+		add = hl_fg("GittyAdd", "#ae90d7"),
+	}
 end
 
 -- Build the sed colorization string for commit types
