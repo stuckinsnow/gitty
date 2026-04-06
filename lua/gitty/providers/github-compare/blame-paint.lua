@@ -89,10 +89,12 @@ function M.highlight_commit(commits)
 	table.sort(file_list)
 
 	require("fzf-lua").fzf_exec(file_list, {
+		cwd = root,
 		prompt = "Highlight files> ",
 		fzf_args = "--multi",
 		fzf_opts = {
 			["--header"] = ":: ENTER=highlight selected :: TAB=multi-select ::",
+			["--preview"] = "bat --style=numbers --color=always {}"
 		},
 		actions = {
 			["default"] = function(selected)
