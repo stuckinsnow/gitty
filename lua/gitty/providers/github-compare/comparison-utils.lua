@@ -5,6 +5,12 @@ local picker_utils = require("gitty.providers.github-compare.picker-utils")
 local validation_utils = require("gitty.providers.github-compare.validation-utils")
 local minidiff_utils = require("gitty.providers.github-compare.minidiff-utils")
 
+local function git_root()
+	local buf_dir = vim.fn.expand("%:p:h")
+	local out = vim.fn.system({ "git", "-C", buf_dir, "rev-parse", "--show-toplevel" }):gsub("%s+", "")
+	return out ~= "" and out or nil
+end
+
 function M.compare_by_hash()
 	-- Choose diff method first
 	vim.ui.select({ "Diffview", "Mini Diff (inline)" }, {
@@ -108,8 +114,8 @@ function M.compare_by_picker()
 					return
 				end
 
-				local branch1 = selected[1]:match("([^%s]+)$")
-				local branch2 = selected[2]:match("([^%s]+)$")
+				local branch1 = selected[1]:match("%*?%s*([^%s]+)")
+				local branch2 = selected[2]:match("%*?%s*([^%s]+)")
 
 				if not branch1 or not branch2 then
 					vim.notify("Failed to extract branch names", vim.log.levels.ERROR)
@@ -235,7 +241,7 @@ function M.compare_with_minidiff()
 					return
 				end
 
-				local branch = selected[1]:match("([^%s]+)$")
+				local branch = selected[1]:match("%*?%s*([^%s]+)")
 				if not branch then
 					vim.notify("Failed to extract branch name", vim.log.levels.ERROR)
 					return
@@ -245,6 +251,7 @@ function M.compare_with_minidiff()
 				local git_log_cmd = picker_utils.create_themed_git_log_cmd(branch, 50)
 
 				fzf.fzf_exec(git_log_cmd, {
+					cwd = git_root(),
 					prompt = string.format("Select commit from %s for inline diff: ", branch),
 					fzf_opts = {
 						["--header"] = string.format(

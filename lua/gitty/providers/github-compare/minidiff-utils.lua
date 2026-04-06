@@ -286,17 +286,9 @@ function M.reset_minidiff(buf)
 		return false
 	end
 
-	-- Disable any existing mini.diff on this buffer
-	minidiff.disable(buf)
-
-	-- Clear any existing overlays
-	if minidiff.get_buf_data and minidiff.get_buf_data(buf) then
-		-- Force clear the overlay
-		vim.schedule(function()
-			minidiff.toggle_overlay(buf) -- Turn off if on
-			minidiff.toggle_overlay(buf) -- Turn back on
-		end)
-	end
+	-- Disable then re-enable so the buffer is in a clean active state
+	pcall(minidiff.disable, buf)
+	minidiff.enable(buf, { source = minidiff.gen_source.none() })
 
 	return true
 end

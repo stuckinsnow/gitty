@@ -178,7 +178,7 @@ function M.cherry_pick_file_from_branch()
 					return
 				end
 
-				local branch = selected[1]:match("([^%s]+)$")
+				local branch = selected[1]:match("%*?%s*([^%s]+)")
 				if not branch then
 					vim.notify("Failed to extract branch name", vim.log.levels.ERROR)
 					return

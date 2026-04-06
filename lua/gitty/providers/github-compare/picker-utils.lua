@@ -89,7 +89,7 @@ function M.pick_branch_and_commit(commit1)
 						return
 					end
 
-					local branch = selected[1]:match("([^%s]+)$")
+					local branch = selected[1]:match("%*?%s*([^%s]+)")
 					if not branch then
 						vim.notify("Failed to extract branch name", vim.log.levels.ERROR)
 						return
@@ -556,7 +556,7 @@ function M.open_files_from_branch_commit_in_new_tab()
 					return
 				end
 
-				local branch = selected[1]:match("([^%s]+)$")
+				local branch = selected[1]:match("%*?%s*([^%s]+)")
 				if not branch then
 					vim.notify("Failed to extract branch name", vim.log.levels.ERROR)
 					return
@@ -704,7 +704,7 @@ function M.browse_files_at_commit()
 					return
 				end
 
-				local branch = selected[1]:match("([^%s]+)$")
+				local branch = selected[1]:match("%*?%s*([^%s]+)")
 				if not branch then
 					vim.notify("Failed to extract branch name", vim.log.levels.ERROR)
 					return
