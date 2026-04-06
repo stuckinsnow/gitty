@@ -44,15 +44,15 @@ local function paint_ranges(bufnr, ranges)
 	for _, r in ipairs(ranges) do
 		for row = r[1] - 1, math.min(r[2] - 1, max - 1) do
 			local total = r[2] - r[1] + 1
-			local sign = total == 1 and "│"
-				or row == r[1] - 1 and "┌"
-				or row == r[2] - 1 and "└"
-				or "│"
+			local sign = total == 1 and "│ "
+				or row == r[1] - 1 and "┌ "
+				or row == r[2] - 1 and "└ "
+				or "│ "
 			vim.api.nvim_buf_set_extmark(bufnr, ns, row, 0, {
 				line_hl_group = "GittyBlamePaintLine", priority = 100,
 			})
 			vim.api.nvim_buf_set_extmark(bufnr, ns, row, 0, {
-				sign_text = sign, sign_hl_group = "GittyBlamePaintSign", priority = 100,
+				sign_text = sign, sign_hl_group = "GittyBlamePaintSign", priority = 200,
 			})
 		end
 	end
@@ -71,42 +71,84 @@ function M.highlight_commit(commits)
 		if full ~= "" then commit_set[full] = true end
 	end
 
-	local files = {}
+	local file_list = {}
 	for _, hash in ipairs(commits) do
 		local out = vim.fn.system({ "git", "-C", root, "diff-tree", "--no-commit-id", "-r", "--name-only", hash })
-		for f in out:gmatch("[^\n]+") do files[f] = true end
-	end
-
-	M.clear()
-	local total_lines, file_count = 0, 0
-	local highlighted_files = {}
-
-	for rel_path in pairs(files) do
-		local full_path = root .. "/" .. rel_path
-		if vim.fn.filereadable(full_path) == 1 then
-			local lines = blame_lines_for_commit(root, rel_path, commit_set)
-			if #lines > 0 then
-				local bufnr = vim.fn.bufnr(full_path)
-				if bufnr == -1 then
-					bufnr = vim.fn.bufadd(full_path)
-					vim.fn.bufload(bufnr)
-				end
-				paint_ranges(bufnr, collapse_ranges(lines))
-				total_lines = total_lines + #lines
-				file_count = file_count + 1
-				highlighted_files[#highlighted_files + 1] = { path = full_path, first_line = lines[1] }
+		for f in out:gmatch("[^\n]+") do
+			if not vim.tbl_contains(file_list, f) and vim.fn.filereadable(root .. "/" .. f) == 1 then
+				table.insert(file_list, f)
 			end
 		end
 	end
 
-	-- Open all highlighted files
-	for _, f in ipairs(highlighted_files) do
-		vim.cmd("edit " .. vim.fn.fnameescape(f.path))
+	if #file_list == 0 then
+		vim.notify("No files found for selected commits", vim.log.levels.WARN)
+		return
 	end
-	-- Jump back to first file at first highlighted line
-	if #highlighted_files > 0 then
-		vim.cmd("edit " .. vim.fn.fnameescape(highlighted_files[1].path))
-		vim.api.nvim_win_set_cursor(0, { highlighted_files[1].first_line, 0 })
+
+	table.sort(file_list)
+
+	require("fzf-lua").fzf_exec(file_list, {
+		prompt = "Highlight files> ",
+		fzf_args = "--multi",
+		fzf_opts = {
+			["--header"] = ":: ENTER=highlight selected :: TAB=multi-select ::",
+		},
+		actions = {
+			["default"] = function(selected)
+				if not selected or #selected == 0 then return end
+				local chosen = {}
+				for _, s in ipairs(selected) do chosen[s] = true end
+				M._paint_files(root, chosen, commit_set)
+			end,
+		},
+	})
+end
+
+function M._paint_files(root, files, commit_set)
+	M.clear()
+	local total_lines, file_count = 0, 0
+	local to_paint = {}
+
+	for rel_path in pairs(files) do
+		local full_path = root .. "/" .. rel_path
+		local lines = blame_lines_for_commit(root, rel_path, commit_set)
+		to_paint[#to_paint + 1] = { path = full_path, lines = lines }
+	end
+
+	-- Open all files first so edit doesn't wipe extmarks
+	for _, f in ipairs(to_paint) do
+		local bufnr = vim.fn.bufnr(f.path)
+		if bufnr == -1 then
+			bufnr = vim.fn.bufadd(f.path)
+			vim.fn.bufload(bufnr)
+		end
+		vim.bo[bufnr].buflisted = true
+		f.bufnr = bufnr
+	end
+
+	-- Now paint after all buffers are loaded
+	for _, f in ipairs(to_paint) do
+		if #f.lines > 0 then
+			paint_ranges(f.bufnr, collapse_ranges(f.lines))
+			total_lines = total_lines + #f.lines
+			file_count = file_count + 1
+		end
+		-- Ensure sign column is visible in all windows showing this buffer
+		for _, win in ipairs(vim.fn.win_findbuf(f.bufnr)) do
+			vim.wo[win].signcolumn = "yes"
+		end
+	end
+
+	-- Open files in current window without reloading
+	for _, f in ipairs(to_paint) do
+		vim.cmd("buffer " .. f.bufnr)
+	end
+	if #to_paint > 0 then
+		vim.cmd("buffer " .. to_paint[1].bufnr)
+		if #to_paint[1].lines > 0 then
+			vim.api.nvim_win_set_cursor(0, { to_paint[1].lines[1], 0 })
+		end
 	end
 
 	vim.notify(string.format("Highlighted %d lines across %d file(s)", total_lines, file_count), vim.log.levels.INFO)
