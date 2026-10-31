@@ -88,35 +88,40 @@ function M.highlight_commit(commits)
 
 	table.sort(file_list)
 
+	local function paint_selected(selected, loclist)
+		if not selected or #selected == 0 then return end
+		local chosen = {}
+		for _, s in ipairs(selected) do chosen[s] = true end
+		M._paint_files(root, chosen, commit_set, loclist)
+	end
+
 	require("fzf-lua").fzf_exec(file_list, {
 		cwd = root,
 		prompt = "Highlight files> ",
 		fzf_args = "--multi",
 		fzf_opts = {
-			["--header"] = ":: ENTER=highlight selected :: TAB=multi-select ::",
+			["--header"] = ":: ENTER=highlight selected :: CTRL-L=hl + loclist :: TAB=multi-select ::",
 			["--preview"] = "bat --style=numbers --color=always {}"
 		},
 		actions = {
-			["default"] = function(selected)
-				if not selected or #selected == 0 then return end
-				local chosen = {}
-				for _, s in ipairs(selected) do chosen[s] = true end
-				M._paint_files(root, chosen, commit_set)
-			end,
+			["default"] = function(selected) paint_selected(selected, false) end,
+			["ctrl-l"] = function(selected) paint_selected(selected, true) end,
 		},
 	})
 end
 
-function M._paint_files(root, files, commit_set)
+function M._paint_files(root, files, commit_set, loclist)
 	M.clear()
 	local total_lines, file_count = 0, 0
 	local to_paint = {}
+	local loc_items = {}
 
 	for rel_path in pairs(files) do
 		local full_path = root .. "/" .. rel_path
 		local lines = blame_lines_for_commit(root, rel_path, commit_set)
 		to_paint[#to_paint + 1] = { path = full_path, lines = lines }
 	end
+	table.sort(to_paint, function(a, b) return a.path < b.path end)
 
 	-- Open all files first so edit doesn't wipe extmarks
 	for _, f in ipairs(to_paint) do
@@ -132,9 +137,22 @@ function M._paint_files(root, files, commit_set)
 	-- Now paint after all buffers are loaded
 	for _, f in ipairs(to_paint) do
 		if #f.lines > 0 then
-			paint_ranges(f.bufnr, collapse_ranges(f.lines))
+			local ranges = collapse_ranges(f.lines)
+			paint_ranges(f.bufnr, ranges)
 			total_lines = total_lines + #f.lines
 			file_count = file_count + 1
+			if loclist then
+				for _, r in ipairs(ranges) do
+					local text = vim.api.nvim_buf_get_lines(f.bufnr, r[1] - 1, r[1], false)[1] or ""
+					loc_items[#loc_items + 1] = {
+						bufnr = f.bufnr,
+						lnum = r[1],
+						end_lnum = r[2],
+						col = 1,
+						text = vim.trim(text),
+					}
+				end
+			end
 		end
 		-- Ensure sign column is visible in all windows showing this buffer
 		for _, win in ipairs(vim.fn.win_findbuf(f.bufnr)) do
@@ -151,6 +169,10 @@ function M._paint_files(root, files, commit_set)
 		if #to_paint[1].lines > 0 then
 			vim.api.nvim_win_set_cursor(0, { to_paint[1].lines[1], 0 })
 		end
+	end
+
+	if loclist and #loc_items > 0 then
+		vim.fn.setloclist(0, {}, " ", { title = "Gitty blame paint", items = loc_items })
 	end
 
 	vim.notify(string.format("Highlighted %d lines across %d file(s)", total_lines, file_count), vim.log.levels.INFO)
