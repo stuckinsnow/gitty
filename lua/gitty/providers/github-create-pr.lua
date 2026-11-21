@@ -31,12 +31,12 @@ function M.create_new_pr()
 
 				target_branch = vim.trim(target_branch)
 
-		-- Get PR title first
-		local title = vim.fn.input("PR title: ")
-		if not title or title == "" then
-			vim.notify("PR creation cancelled - no title provided", vim.log.levels.ERROR)
-			return
-		end
+				-- Get PR title first
+				local title = vim.fn.input("PR title: ")
+				if not title or title == "" then
+					vim.notify("PR creation cancelled - no title provided", vim.log.levels.ERROR)
+					return
+				end
 
 				-- Ask for description type
 				fzf.fzf_exec({ "AI-generated", "Manual" }, {
@@ -54,16 +54,18 @@ function M.create_new_pr()
 							end
 
 							-- Always create the PR window first
-							local win, buf = M.create_pr_window(current_branch, target_branch, title)
+							local _, buf = M.create_pr_window(current_branch, target_branch, title)
 
 							if desc_type == "AI-generated" then
-								-- Generate PR description via opencode
 								vim.notify("Generating AI description...", vim.log.levels.INFO)
 								local diff_summary = vim.fn.system("git diff --stat HEAD~5..HEAD"):gsub("\r", "")
 								local commit_msgs = vim.fn.system("git log --oneline -n 10 --no-merges"):gsub("\r", "")
 								local prompt = string.format(
-									"Generate a concise PR description (markdown) for branch %s -> %s.\n\nRecent commits:\n%s\n\nDiff summary:\n%s",
-									current_branch, target_branch, commit_msgs, diff_summary
+									"Generate a concise PR description (markdown) for branch %s -> %s.\n\nRecent commits:\n%s\n\nDiff summary:\n%s\n\nReply with ONLY the description text.",
+									current_branch,
+									target_branch,
+									commit_msgs,
+									diff_summary
 								)
 								local ai = require("gitty.utilities.ai")
 								ai.run(prompt, function(result, err)
@@ -72,14 +74,13 @@ function M.create_new_pr()
 										return
 									end
 									if vim.api.nvim_buf_is_valid(buf) then
-										-- Find line 13 (description area) and replace
 										local lines = vim.split(result, "\n")
 										vim.api.nvim_buf_set_lines(buf, 13, 14, false, lines)
 									end
 								end)
 							end
-						end
-					}
+						end,
+					},
 				})
 			end
 		}

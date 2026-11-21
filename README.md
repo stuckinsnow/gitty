@@ -56,8 +56,6 @@ https://github.com/user-attachments/assets/d6e57846-59a2-4038-8ad0-8c97ad6f5274
 },
 ```
 
-For AI features (commit messages, PR descriptions, commit analysis), you need [opencode](https://github.com/opencode-ai/opencode) installed with Copilot configured.
-
 ---
 
 ## ⚙️ Configuration
@@ -114,7 +112,6 @@ require("gitty").setup({
 | `<leader>g3` | n    | Mini Diff (inline diff with commit)    |
 | `<leader>g3` | v    | Mini Diff (diff selection with commit) |
 | `<leader>g4` | n    | File History & Browse                  |
-| `<leader>g6` | n    | AI Tools (commit, analyse)             |
 
 **In PR/Issue/Commit/Branch pickers:**
 
@@ -158,7 +155,6 @@ vim.keymap.set("n", "<leader>g2", compare.git_compare_commits, { desc = "Git Com
 vim.keymap.set("n", "<leader>g3", compare.compare_with_minidiff, { desc = "Git Mini Diff" })
 vim.keymap.set("v", "<leader>g3", compare.compare_selected_with_minidiff, { desc = "Git Mini Diff Selection" })
 vim.keymap.set("n", "<leader>g4", compare.git_file_history, { desc = "Git File History" })
-vim.keymap.set("n", "<leader>g6", compare.git_ai_tools, { desc = "Git AI Tools" })
 
 -- GitHub
 vim.keymap.set("n", "<leader>g1n", "<cmd>FzfGithubNotifications<CR>", { desc = "GitHub Notifications" })
@@ -187,7 +183,6 @@ vim.keymap.set("n", "<leader>c0j", compare.compare_json_files, { desc = "Compare
 | `:FzfCreatePr`            | Create a new Pull Request                |
 | `:FzfCreateIssue`         | Create a new Issue                       |
 | `:GittySetup`             | (Re)initialize gitty                     |
-| `:GittyCommit`            | AI-generated commit message              |
 
 ---
 
@@ -216,8 +211,8 @@ vim.keymap.set("n", "<leader>c0j", compare.compare_json_files, { desc = "Compare
 
 ### Creating PRs & Issues
 
-- `:FzfCreatePr` — Guided PR creation in a side buffer, with commit summary and AI description (if available).
-- `:FzfCreateIssue` — Guided issue creation in a side buffer with template.
+- `:FzfCreatePr` — Guided PR creation in a side buffer, with commit summary and optional AI description (via `lg.nvim`).
+- `:FzfCreateIssue` — Guided issue creation in a side buffer with template and optional AI description (via `lg.nvim`).
 
 ### Comparing & Diffing
 
@@ -308,15 +303,3 @@ You will need to set up the following highlights in your Neovim configuration to
 - GittySplitLeftTitle: Highlights for the left split title.
 - GittySplitRightTitle: Highlights for the right split title.
 ```
-
----
-
-### 🤖 AI Features
-
-Gitty uses [opencode](https://github.com/opencode-ai/opencode) with `github-copilot/gpt-4.1` for:
-
-- **AI Commit** (`<leader>g6`) — Generate commit messages from staged changes
-- **Diff Analyse** (`<leader>g6`) — Analyze diffs between commits for bugs/regressions
-- **AI PR descriptions** (`<leader>g1C`) — Auto-generate PR descriptions when creating PRs
-
-Requires `opencode` installed with Copilot configured.

@@ -7,7 +7,6 @@ local picker_utils = require("gitty.providers.github-compare.picker-utils")
 local minidiff_utils = require("gitty.providers.github-compare.minidiff-utils")
 local file_view_utils = require("gitty.providers.github-compare.file-view-utils")
 local blame_utils = require("gitty.providers.github-compare.blame-utils")
-local github_compare_ai = require("gitty.providers.github-compare.github-compare-ai")
 local file_compare_utils = require("gitty.providers.github-compare.file-compare-utils")
 
 function M.git_compare_commits()
@@ -82,33 +81,6 @@ function M.git_file_history()
 					picker_utils.browse_files_at_commit()
 				elseif choice:match("Open files from previous commits") then
 					M.fzf_last_commit_files()
-				end
-			end,
-		},
-	})
-end
-
-function M.git_ai_tools()
-	fzf.fzf_exec({
-		"1. AI Commit",
-		"2. Diff Analyse - AI",
-	}, {
-		prompt = "AI Tools> ",
-		winopts = {
-			width = 0.6,
-			height = 0.3,
-		},
-		actions = {
-			["default"] = function(selected)
-				local choice = selected[1]
-				if not choice then
-					return
-				end
-
-				if choice:match("AI Commit") then
-					require("gitty.providers.github-commit").commit()
-				elseif choice:match("Diff Analyse") then
-					github_compare_ai.fzf_github_analyse_ai()
 				end
 			end,
 		},

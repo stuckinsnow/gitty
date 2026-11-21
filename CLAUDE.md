@@ -33,7 +33,6 @@ The compare functionality is split across multiple modules:
 - `minidiff-utils.lua` - Mini.diff integration
 - `file-view-utils.lua` - File viewing at specific commits
 - `blame-utils.lua` - Git blame functionality
-- `github-compare-ai.lua` - AI-powered diff analysis
 
 ### Utilities
 - `lua/gitty/utilities/github-utils.lua` - GitHub API helpers
