@@ -142,14 +142,16 @@ function M._paint_files(root, files, commit_set, qflist)
 			total_lines = total_lines + #f.lines
 			file_count = file_count + 1
 			if qflist then
+				local ok_loccy, loccy = pcall(require, "loccy")
 				for _, r in ipairs(ranges) do
-					local text = vim.api.nvim_buf_get_lines(f.bufnr, r[1] - 1, r[1], false)[1] or ""
+					local raw = vim.trim(vim.api.nvim_buf_get_lines(f.bufnr, r[1] - 1, r[1], false)[1] or "")
+					local text = (ok_loccy and loccy.format) and loccy.format("GIT", raw) or raw
 					qf_items[#qf_items + 1] = {
 						bufnr = f.bufnr,
 						lnum = r[1],
 						end_lnum = r[2],
 						col = 1,
-						text = vim.trim(text),
+						text = text,
 					}
 				end
 			end
