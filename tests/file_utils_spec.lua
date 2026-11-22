@@ -122,9 +122,31 @@ test("copy_filenames: include_current=false copies only selected files", functio
 	assert_eq(clipboard, "- lua/plugins/mini-files.lua\n- src/components/button.test.ts")
 end)
 
-test("copy_filenames: handles path.filename_first formatted entries with multi-dot names", function()
+test("copy_filenames: handles git status path.filename_first with tab separator", function()
 	clipboard = nil
-	file_utils.copy_filenames_to_clipboard({ " M  button.test.ts\226\128\130src/components" }, {
+	file_utils.copy_filenames_to_clipboard({ " M  button.test.ts\tsrc/components" }, {
+		header = "",
+		prefix = "- ",
+		include_current = false,
+	})
+	assert_eq(clipboard, "- src/components/button.test.ts")
+end)
+
+test("copy_filenames: git status selecting currently open file copies only that file", function()
+	clipboard = nil
+	file_utils.copy_filenames_to_clipboard({ " M  fzf-lua.lua\tlua/plugins" }, {
+		header = "",
+		prefix = "- ",
+		include_current = false,
+		fzf_opts = { __CTX = { bufnr = buf_a } },
+	})
+	assert_eq(clipboard, "- lua/plugins/fzf-lua.lua")
+	assert_eq(last_notify, "Copied 1 filename(s) to clipboard")
+end)
+
+test("copy_filenames: handles path.dirname_first with tab separator", function()
+	clipboard = nil
+	file_utils.copy_filenames_to_clipboard({ "src/components/\tbutton.test.ts" }, {
 		header = "",
 		prefix = "- ",
 		include_current = false,

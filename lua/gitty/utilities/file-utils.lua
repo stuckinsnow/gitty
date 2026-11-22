@@ -56,9 +56,9 @@ local function extract_path(raw_entry, fzf_opts)
 	end
 
 	-- Handle fzf-lua path.filename_first / path.dirname_first without fzf_opts
-	-- These formatters separate filename and directory with en-space (U+2002) or NBSP (U+00A0)
+	-- These formatters separate filename and directory with <Tab>, en-space (U+2002), or NBSP (U+00A0)
 	local cleaned = vim.trim(strip_ansi(raw_entry))
-	for _, sep in ipairs({ "\226\128\130", "\194\160" }) do
+	for _, sep in ipairs({ "\t", "\226\128\130", "\194\160" }) do
 		local first, rest = cleaned:match("^(.-)" .. sep .. "+(.+)$")
 		if first and rest then
 			-- Strip leading git status / devicon prefix from the first segment
